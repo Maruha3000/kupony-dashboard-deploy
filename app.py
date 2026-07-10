@@ -398,37 +398,15 @@ if len(rozliczone_all) > 0:
         Kupony=("Status", "count"),
         Wygrane=("Status", lambda x: (x == "WYGRANA").sum())
     ).reset_index()
-    ranking = ranking[ranking["Kupony"] >= 2]
+    ranking = ranking[ranking["Kupony"] >= 2].copy()
     ranking["Win rate %"] = (ranking["Wygrane"] / ranking["Kupony"] * 100).round(0)
     ranking = ranking.sort_values("Win rate %", ascending=False)
 
     if len(ranking) > 0:
-        st.dataframe(
-            ranking.rename(columns={"Rynek": "Rynek"}),
-            use_container_width=True,
-            hide_index=True
-        )
-
-        if PLOTLY_OK:
-            fig_ranking = go.Figure()
-            ranking_sorted = ranking.sort_values("Win rate %", ascending=True)
-            fig_ranking.add_trace(go.Bar(
-                x=ranking_sorted["Win rate %"], y=ranking_sorted["Rynek"], orientation="h",
-                text=[f"{int(v)}%" for v in ranking_sorted["Win rate %"]], textposition="outside",
-                marker_color="#4a90e2"
-            ))
-            fig_ranking.update_layout(
-                title={"text": "Win rate rynków obstawianych przez Sędziego<br><span style='font-size: 14px; font-weight: normal; color:#9a9a9a;'>Rynki z min. 2 rozliczonymi zakładami</span>"},
-                font=dict(size=13),
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#e0e0e0"
-            )
-            fig_ranking.update_xaxes(title_text="Win rate (%)", range=[0, 115], gridcolor="#333")
-            fig_ranking.update_yaxes(title_text="")
-            st.plotly_chart(fig_ranking, use_container_width=True)
-        else:
-            st.caption("📊 Wykres win rate wymaga pakietu plotly (dodaj 'plotly' do requirements.txt).")
+        st.dataframe(ranking, use_container_width=True, hide_index=True)
+        st.caption("Wykres pokazuje rynki z minimum 2 rozliczonymi kuponami.")
+        ranking_chart = ranking.set_index("Rynek")[["Win rate %"]]
+        st.bar_chart(ranking_chart, color="#4a90e2")
     else:
         st.info("Za mało danych, aby zbudować ranking rynków (min. 2 kupony na rynek).")
 else:
@@ -444,26 +422,10 @@ if len(rozliczone_all) > 0:
         lambda r: (r["Stawka"] * r["Kurs"] - r["Stawka"]) if r["Status"] == "WYGRANA" else -r["Stawka"],
         axis=1
     )
-    df_trend["Kumulatywny_zysk"] = df_trend["PL"].cumsum()
-
-    if PLOTLY_OK:
-        fig_trend = go.Figure()
-        fig_trend.add_trace(go.Scatter(
-            x=df_trend["Data_dt"], y=df_trend["Kumulatywny_zysk"],
-            mode="lines", fill="tozeroy", line=dict(width=3, color="#4a90e2")
-        ))
-        fig_trend.update_layout(
-            title={"text": "Skumulowany zysk Sędziego AI<br><span style='font-size: 14px; font-weight: normal; color:#9a9a9a;'>Trend banku po każdym rozliczonym kuponie</span>"},
-            font=dict(size=13),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            font_color="#e0e0e0"
-        )
-        fig_trend.update_xaxes(title_text="Data", gridcolor="#333")
-        fig_trend.update_yaxes(title_text="Zysk (GBP)", gridcolor="#333")
-        st.plotly_chart(fig_trend, use_container_width=True)
-    else:
-        st.caption("📊 Wykres trendu zysku wymaga pakietu plotly (dodaj 'plotly' do requirements.txt).")
+    df_trend["Kumulatywny zysk GBP"] = df_trend["PL"].cumsum()
+    trend_chart = df_trend.groupby("Data_dt", as_index=True)["Kumulatywny zysk GBP"].last().to_frame()
+    st.caption("Skumulowany zysk po każdym dniu z rozliczonym kuponem.")
+    st.line_chart(trend_chart, color="#4a90e2")
 else:
     st.info("Brak rozliczonych kuponów do zbudowania wykresu trendu.")
 
@@ -681,23 +643,24 @@ with st.container():
             else:
                 st.error(f"Błąd zapisu do GitHub: {r2.status_code} — {r2.text}")
                 st.markdown("---")
-st.subheader("Kalkulator X")
+st.subheader("🧮 Kalkulator X")
+st.caption("Wzory: C = (A + B) / 2 oraz X = 1 / (C / 100) = 100 / C.")
 
-col1, col2 = st.columns(2)
-
-with col1:
+calc_col1, calc_col2, calc_col3 = st.columns(3)
+with calc_col1:
     a = st.number_input("A", value=0.0, step=0.1, key="calc_a")
-
-with col2:
+with calc_col2:
     b = st.number_input("B", value=0.0, step=0.1, key="calc_b")
 
 c = (a + b) / 2
+with calc_col3:
+    st.metric("C (średnia A i B)", f"{c:.2f}")
 
-st.write(f"C = ({a} + {b}) / 2 = {c:.2f}")
-
-if c != 0:
-    x = 1 / (c / 100)
+if c > 0:
+    x = 100 / c
     st.success(f"X = {x:.4f}")
+elif c == 0:
+    st.info("Wpisz wartości A i B większe od 0, aby obliczyć X.")
 else:
-    st.error("C nie może być równe 0.")
-                
+    st.error("C musi być większe od 0.")
+
