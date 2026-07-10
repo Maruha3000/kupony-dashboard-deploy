@@ -17,33 +17,73 @@ st.set_page_config(page_title="Kupony Dashboard", layout="wide")
 
 st.markdown(
     """
-    <div style='text-align:center; padding: 12px 10px 6px 10px;'>
-        <h1 style='font-size:2.3rem; margin-bottom:6px; line-height:1.2;'>⚖️ Sędzia AI</h1>
-        <p style='font-size:1.05rem; font-style:italic; color:#b0b0b0; margin:0 0 4px 0; line-height:1.4;'>
-            "Nie szukamy typów.<br>Eliminujemy złe decyzje."
-        </p>
-        <p style='font-size:0.9rem; color:#8a8a8a; margin-top:4px;'>
-            System wydawania werdyktów dla zakładów sportowych
-        </p>
-    </div>
-
-    <div style='background-color:#1c1f26; padding:20px; border-radius:12px;
-                margin:18px auto; max-width:800px; border-left:4px solid #4a90e2;'>
-        <p style='font-size:0.95rem; line-height:1.65; margin:0; color:#e0e0e0;'>
-        <b style='color:#4a90e2;'>Sędzia AI</b> nie opiera się na przeczuciach. Każdy werdykt to efekt
-        głębokiego researchu — system przeszukuje <b>X, Reddita, fora kibicowskie, media społecznościowe
-        i najnowsze newsy</b>, zbierając sygnały, które umykają zwykłemu analitykowi: nastroje kibiców,
-        przecieki o składach, formę zawodników i kontekst niewidoczny w statystykach.
-        </p>
-        <p style='font-size:0.95rem; line-height:1.65; margin-top:14px; margin-bottom:0; color:#e0e0e0;'>
-        System <b style='color:#4a90e2;'>uczy się na własnych błędach i sukcesach</b> — każdy rozliczony
-        kupon trafia do archiwum jako dane treningowe. Z czasem coraz lepiej rozpoznaje, które typy rynków
-        faktycznie dają przewagę, a które tylko wyglądają obiecująco.
-        </p>
+    <style>
+    .stApp {
+        background:
+            radial-gradient(circle at 10% 0%, rgba(56, 189, 248, .13), transparent 30%),
+            radial-gradient(circle at 92% 15%, rgba(129, 140, 248, .12), transparent 26%),
+            #0b1220;
+        color: #e7eefb;
+    }
+    [data-testid="stHeader"] { background: rgba(11, 18, 32, .72); }
+    .block-container { max-width: 1240px; padding-top: 1.35rem; padding-bottom: 3rem; }
+    h1, h2, h3 { color: #f8fbff !important; letter-spacing: -.02em; }
+    h2 { margin-top: 1.7rem !important; padding-bottom: .45rem; border-bottom: 1px solid rgba(148, 163, 184, .18); }
+    [data-testid="stMetric"] {
+        background: linear-gradient(145deg, rgba(26,39,64,.94), rgba(16,27,46,.94));
+        border: 1px solid rgba(100, 116, 139, .28);
+        border-radius: 15px; padding: 15px 16px; min-height: 112px;
+        box-shadow: 0 10px 24px rgba(0,0,0,.16);
+    }
+    [data-testid="stMetricLabel"] { color: #aebed5 !important; font-size: .84rem; }
+    [data-testid="stMetricValue"] { color: #f8fbff !important; font-weight: 700; }
+    [data-testid="stDataFrame"] { border: 1px solid rgba(100,116,139,.25); border-radius: 13px; overflow: hidden; }
+    [data-testid="stExpander"], [data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 14px !important; border-color: rgba(100,116,139,.25) !important;
+        background: rgba(18, 28, 46, .72);
+    }
+    .stButton > button {
+        border-radius: 10px; border: 1px solid rgba(56,189,248,.55); color: #eaf8ff;
+        background: linear-gradient(135deg, #0369a1, #2563eb); font-weight: 600;
+    }
+    .stButton > button:hover { border-color: #7dd3fc; background: linear-gradient(135deg, #0284c7, #4f46e5); }
+    @keyframes pulseGlow {
+        0% { box-shadow: 0 0 0 0 rgba(129,140,248,.42); }
+        50% { box-shadow: 0 0 18px 3px rgba(129,140,248,.25); }
+        100% { box-shadow: 0 0 0 0 rgba(129,140,248,.42); }
+    }
+    .kupon-open { animation: pulseGlow 2.4s infinite; border-radius: 14px; }
+    .hero-card {
+        position: relative; overflow: hidden; padding: 28px 30px; border-radius: 20px;
+        background: linear-gradient(125deg, rgba(18,33,57,.98), rgba(25,38,74,.93));
+        border: 1px solid rgba(96,165,250,.30); box-shadow: 0 18px 48px rgba(0,0,0,.24);
+    }
+    .hero-card:after { content: ''; position: absolute; width: 260px; height: 260px; right: -85px; top: -130px; border-radius: 50%; background: rgba(56,189,248,.13); filter: blur(3px); }
+    .hero-kicker { color:#7dd3fc; font-size:.75rem; letter-spacing:1.6px; font-weight:700; }
+    .hero-title { color:#f8fbff; font-size:2.45rem; font-weight:800; margin:7px 0 7px; }
+    .hero-title span { background: linear-gradient(90deg,#7dd3fc,#a5b4fc); -webkit-background-clip:text; color:transparent; }
+    .hero-copy { color:#c6d4e9; max-width:760px; line-height:1.65; margin:0; }
+    .live-pill { display:inline-block; margin-top:16px; color:#bbf7d0; background:rgba(34,197,94,.13); border:1px solid rgba(34,197,94,.31); border-radius:999px; padding:6px 11px; font-size:.78rem; font-weight:700; letter-spacing:.5px; }
+    @media (max-width: 640px) {
+      .block-container { padding: .8rem .75rem 2rem; }
+      .hero-card { padding: 22px 20px; border-radius: 16px; }
+      .hero-title { font-size: 2rem; }
+    }
+    </style>
+    <div class='hero-card'>
+        <div class='hero-kicker'>⚖️ INTELIGENTNY PANEL WERDYKTÓW</div>
+        <div class='hero-title'>Sędzia <span>AI</span></div>
+        <p class='hero-copy'><b>Nie szukamy typów. Eliminujemy złe decyzje.</b><br>
+        Analiza, dyscyplina banku i transparentne rozliczenia — w jednym miejscu.</p>
+        <div class='live-pill'>● SYSTEM AKTYWNY</div>
     </div>
     """,
     unsafe_allow_html=True
 )
+
+with st.expander("🧠 Jak działa Sędzia AI?"):
+    st.markdown("Sędzia AI łączy research, kontekst meczu i późniejsze rozliczenia. Każdy zamknięty typ zasila historię, ranking rynków oraz trend wyniku.")
+
 
 MIESIACE_PL = {1:"Styczeń",2:"Luty",3:"Marzec",4:"Kwiecień",5:"Maj",6:"Czerwiec",
                7:"Lipiec",8:"Sierpień",9:"Wrzesień",10:"Październik",11:"Listopad",12:"Grudzień"}
@@ -96,23 +136,6 @@ def normalizuj_kolumne_rynku(df, kolumna):
         df = df.copy()
         df[kolumna] = df[kolumna].apply(normalizuj_rynek)
     return df
-
-st.markdown(
-    """
-    <style>
-    @keyframes pulseGlow {
-        0%   { box-shadow: 0 0 0px 0px rgba(74,144,226,0.6); }
-        50%  { box-shadow: 0 0 12px 4px rgba(74,144,226,0.55); }
-        100% { box-shadow: 0 0 0px 0px rgba(74,144,226,0.6); }
-    }
-    .kupon-open {
-        animation: pulseGlow 2.2s infinite;
-        border-radius: 10px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 status_dnia_placeholder = st.empty()
 licznik_placeholder = st.empty()
@@ -313,7 +336,7 @@ else:
 
 status_dnia_placeholder.markdown(
     f"""
-    <div style='background-color:{status_kolor}; padding:14px 18px; border-radius:10px;
+    <div style='background:linear-gradient(135deg, {status_kolor}, #172554); border:1px solid rgba(255,255,255,.12); padding:14px 18px; border-radius:14px;
                 text-align:center; margin-bottom:10px; color:white; font-weight:600; font-size:1.05rem;'>
         {status_emoji} {status_txt} — ostatnie 24h: {w24} wygrane / {p24} przegrane
     </div>
@@ -356,7 +379,7 @@ if len(df_analizy) > 0:
     ow_pulse_class = "kupon-open" if ow["wynik"] == "OPEN" else ""
     ostatni_werdykt_placeholder.markdown(
         f"""
-        <div class="{ow_pulse_class}" style='background-color:#1c1f26; border:1px solid #333;
+        <div class="{ow_pulse_class}" style='background:linear-gradient(135deg,#16243b,#111c30); border:1px solid rgba(100,116,139,.32);
                     border-left:6px solid {ow_kolor}; border-radius:12px; padding:18px 22px;
                     margin-bottom:14px;'>
             <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>
@@ -379,6 +402,7 @@ if len(df_analizy) > 0:
     )
 
 st.subheader("📊 Statystyki")
+st.caption("Szybki obraz skuteczności i wyniku w wybranym przedziale czasu.")
 zakres_wyboru = st.selectbox("Przedział czasowy", ["Ostatnie 7 dni", "Ostatni miesiąc", "Cały okres"], index=2)
 
 dzis = pd.Timestamp(datetime.today().date())
@@ -466,6 +490,7 @@ st.divider()
 
 # --- Ranking najlepszych rynków ---
 st.subheader("🏆 Ranking rynków")
+st.caption("Najskuteczniejsze rynki na podstawie rozliczonych kuponów.")
 if len(rozliczone_all) > 0:
     ranking = rozliczone_all.groupby("Rynek").agg(
         Kupony=("Status", "count"),
@@ -489,6 +514,7 @@ st.divider()
 
 # --- Wykres trendu zysku w czasie ---
 st.subheader("📈 Trend zysku Sędziego")
+st.caption("Wynik narastająco — każdy rozliczony kupon ma znaczenie.")
 if len(rozliczone_all) > 0:
     df_trend = rozliczone_all.sort_values("Data_dt").copy()
     df_trend["PL"] = df_trend.apply(
@@ -504,7 +530,7 @@ else:
 
 st.divider()
 
-st.subheader("Najnowsze typy")
+st.subheader("🎯 Najnowsze typy")
 st.caption("Widoczne: 6 najnowszych typów + wszystkie ze statusem OPEN. Starsze rozliczone trafiają do archiwum.")
 
 if len(df_analizy) > 0:
