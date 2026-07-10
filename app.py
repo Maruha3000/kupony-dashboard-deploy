@@ -48,8 +48,21 @@ st.markdown(
         box-shadow: 0 10px 26px rgba(0,0,0,.16);
         margin: .7rem 0 1.15rem;
     }
-    [data-testid="stExpander"] summary { padding: .25rem .25rem; }
-    [data-testid="stExpander"] summary:hover { color: #bae6fd !important; }
+    @keyframes decisionPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, .45), 0 10px 26px rgba(0,0,0,.18); transform: translateY(0); }
+        50% { box-shadow: 0 0 0 7px rgba(250, 204, 21, 0), 0 0 28px rgba(250, 204, 21, .30), 0 12px 28px rgba(0,0,0,.23); transform: translateY(-1px); }
+    }
+    [data-testid="stExpander"] {
+        animation: decisionPulse 2.25s ease-in-out infinite;
+        border: 1px solid rgba(250,204,21,.95) !important;
+        background: linear-gradient(105deg, #7c2d12, #9a3412 48%, #78350f) !important;
+    }
+    [data-testid="stExpander"] summary { padding: .55rem .65rem; font-size: 1.06rem; font-weight: 800; color: #fff7d6 !important; letter-spacing: .01em; }
+    [data-testid="stExpander"] summary:hover { color: #ffffff !important; }
+    [data-testid="stExpander"] [data-testid="stMarkdownContainer"] { color: #e7eefb; }
+    @media (max-width: 640px) {
+      [data-testid="stExpander"] summary { font-size: .98rem; line-height: 1.4; }
+    }
     .stButton > button {
         border-radius: 10px; border: 1px solid rgba(56,189,248,.55); color: #eaf8ff;
         background: linear-gradient(135deg, #0369a1, #2563eb); font-weight: 600;
@@ -89,7 +102,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-with st.expander("🧠 Zobacz, jak Sędzia podejmuje decyzje  •  Research. Nauka na wynikach. Ewolucja zasad."):
+with st.expander("🧠 KLIKNIJ I ZOBACZ, JAK SĘDZIA PODEJMUJE DECYZJE  •  Research. Nauka na wynikach. Ewolucja zasad."):
     st.markdown(
         "**Sędzia AI nie szuka przypadkowych typów.** Przed każdym werdyktem prowadzi wielowarstwowy research: analizuje statystyki, formę, kontekst meczu, kursy i value, newsy, składy, absencje oraz sygnały z mediów społecznościowych, lokalnych źródeł, X, Reddita i forów kibicowskich.\n\n"
         "Każdy rozliczony kupon trafia do jego pamięci operacyjnej. Sędzia porównuje decyzję z przebiegiem meczu, rozpoznaje błędy analizy i błędy wykonawcze, a następnie aktualizuje profile lig, filtry oraz zasady działania. Nowe reguły najpierw przechodzą test, a później są zostawiane, korygowane albo usuwane.\n\n"
