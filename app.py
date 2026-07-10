@@ -42,6 +42,14 @@ st.markdown(
         border-radius: 14px !important; border-color: rgba(100,116,139,.25) !important;
         background: rgba(18, 28, 46, .72);
     }
+    [data-testid="stExpander"] {
+        border: 1px solid rgba(96,165,250,.42) !important;
+        background: linear-gradient(135deg, rgba(20,40,70,.96), rgba(34,32,77,.90)) !important;
+        box-shadow: 0 10px 26px rgba(0,0,0,.16);
+        margin: .7rem 0 1.15rem;
+    }
+    [data-testid="stExpander"] summary { padding: .25rem .25rem; }
+    [data-testid="stExpander"] summary:hover { color: #bae6fd !important; }
     .stButton > button {
         border-radius: 10px; border: 1px solid rgba(56,189,248,.55); color: #eaf8ff;
         background: linear-gradient(135deg, #0369a1, #2563eb); font-weight: 600;
@@ -81,11 +89,11 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-with st.expander("🧠 Jak działa Sędzia AI?"):
+with st.expander("🧠 Zobacz, jak Sędzia podejmuje decyzje  •  Research. Nauka na wynikach. Ewolucja zasad."):
     st.markdown(
-        "**Sędzia AI nie opiera się na przeczuciach.** Każdy werdykt powstaje po szerokim researchu: analizujemy aktualne newsy, informacje o składach, formę zawodników i kontekst spotkania.\n\n"
-        "Przeszukujemy też **X, Reddita, fora kibicowskie oraz inne media społecznościowe**, aby wychwycić sygnały, które często nie są widoczne w samych statystykach — nastroje, lokalne informacje i możliwe zmiany przed meczem.\n\n"
-        "Potem rozliczamy każdy typ. Historia wyników zasila statystyki, ranking rynków i trend zysku, dzięki czemu system uczy się odróżniać faktyczną przewagę od pozornie dobrego kursu."
+        "**Sędzia AI nie szuka przypadkowych typów.** Przed każdym werdyktem prowadzi wielowarstwowy research: analizuje statystyki, formę, kontekst meczu, kursy i value, newsy, składy, absencje oraz sygnały z mediów społecznościowych, lokalnych źródeł, X, Reddita i forów kibicowskich.\n\n"
+        "Każdy rozliczony kupon trafia do jego pamięci operacyjnej. Sędzia porównuje decyzję z przebiegiem meczu, rozpoznaje błędy analizy i błędy wykonawcze, a następnie aktualizuje profile lig, filtry oraz zasady działania. Nowe reguły najpierw przechodzą test, a później są zostawiane, korygowane albo usuwane.\n\n"
+        "**Nie chodzi o więcej typów. Chodzi o system, który z każdą decyzją staje się trudniejszy do oszukania przez przypadek.**"
     )
 
 
