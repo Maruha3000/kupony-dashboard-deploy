@@ -71,6 +71,32 @@ def github_put(path, content_str, sha, message):
         payload["sha"] = sha
     return requests.put(url, headers=headers, json=payload)
 
+def normalizuj_rynek(wartosc):
+    """Ujednolica nazwy identycznych rynków przed archiwum i statystykami."""
+    if pd.isna(wartosc):
+        return wartosc
+
+    rynek = " ".join(str(wartosc).strip().split())
+    # Ten sam rynek piłkarski bywał wpisywany jako: Under 2,5,
+    # Under 2.5 gole albo Under 2.5 goli. W aplikacji ma zawsze jedną nazwę.
+    import re
+    dopasowanie = re.fullmatch(
+        r"(?i)(over|under)\s*(\d+(?:[.,]\d+)?)\s*(?:gol|gole|goli)?", rynek
+    )
+    if dopasowanie:
+        kierunek = dopasowanie.group(1).capitalize()
+        linia = dopasowanie.group(2).replace(",", ".")
+        return f"{kierunek} {linia}"
+
+    return rynek
+
+
+def normalizuj_kolumne_rynku(df, kolumna):
+    if kolumna in df.columns:
+        df = df.copy()
+        df[kolumna] = df[kolumna].apply(normalizuj_rynek)
+    return df
+
 st.markdown(
     """
     <style>
@@ -166,9 +192,11 @@ lipiec_data = """Data,Sport,Rozgrywki,Mecz,Rynek,Pewnosc,Stawka,Kurs,Godzina,Sta
 
 df_czerwiec = pd.read_csv(StringIO(czerwiec_data))
 df_czerwiec["Analiza"] = ""
+df_czerwiec = normalizuj_kolumne_rynku(df_czerwiec, "Rynek")
 
 df_lipiec = pd.read_csv(StringIO(lipiec_data))
 df_lipiec["Analiza"] = ""
+df_lipiec = normalizuj_kolumne_rynku(df_lipiec, "Rynek")
 
 content, sha_a = github_get("analizy.csv")
 if content:
@@ -184,6 +212,11 @@ if content_arch:
 else:
     df_archiwum = pd.DataFrame(columns=arch_cols)
     sha_arch = None
+
+# Ujednolicenie działa dla danych z GitHub zanim trafią do archiwum,
+# rankingu rynków, statystyk i wykresów.
+df_analizy = normalizuj_kolumne_rynku(df_analizy, "rynek")
+df_archiwum = normalizuj_kolumne_rynku(df_archiwum, "Rynek")
 
 if len(df_analizy) > 0:
     df_analizy["data_dt"] = pd.to_datetime(df_analizy["data"], format="%Y-%m-%d", errors="coerce")
@@ -580,6 +613,7 @@ if len(df_analizy) > 0:
 
             content_now, sha_now = github_get("analizy.csv")
             df_now = pd.read_csv(StringIO(content_now)) if content_now else df_analizy.copy()
+            df_now = normalizuj_kolumne_rynku(df_now, "rynek")
 
             mask = (
                 (df_now["data"] == wybrany_row["data"]) &
