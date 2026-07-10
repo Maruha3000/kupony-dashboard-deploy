@@ -26,7 +26,7 @@ st.markdown(
         color: #e7eefb;
     }
     [data-testid="stHeader"] { background: rgba(11, 18, 32, .72); }
-    .block-container { max-width: 1240px; padding-top: 1.35rem; padding-bottom: 3rem; }
+    .block-container { max-width: 1240px; padding-top: 4.6rem; padding-bottom: 3rem; }
     h1, h2, h3 { color: #f8fbff !important; letter-spacing: -.02em; }
     h2 { margin-top: 1.7rem !important; padding-bottom: .45rem; border-bottom: 1px solid rgba(148, 163, 184, .18); }
     [data-testid="stMetric"] {
@@ -65,7 +65,7 @@ st.markdown(
     .hero-copy { color:#c6d4e9; max-width:760px; line-height:1.65; margin:0; }
     .live-pill { display:inline-block; margin-top:16px; color:#bbf7d0; background:rgba(34,197,94,.13); border:1px solid rgba(34,197,94,.31); border-radius:999px; padding:6px 11px; font-size:.78rem; font-weight:700; letter-spacing:.5px; }
     @media (max-width: 640px) {
-      .block-container { padding: .8rem .75rem 2rem; }
+      .block-container { padding: 4.05rem .75rem 2rem; }
       .hero-card { padding: 22px 20px; border-radius: 16px; }
       .hero-title { font-size: 2rem; }
     }
@@ -82,7 +82,11 @@ st.markdown(
 )
 
 with st.expander("🧠 Jak działa Sędzia AI?"):
-    st.markdown("Sędzia AI łączy research, kontekst meczu i późniejsze rozliczenia. Każdy zamknięty typ zasila historię, ranking rynków oraz trend wyniku.")
+    st.markdown(
+        "**Sędzia AI nie opiera się na przeczuciach.** Każdy werdykt powstaje po szerokim researchu: analizujemy aktualne newsy, informacje o składach, formę zawodników i kontekst spotkania.\n\n"
+        "Przeszukujemy też **X, Reddita, fora kibicowskie oraz inne media społecznościowe**, aby wychwycić sygnały, które często nie są widoczne w samych statystykach — nastroje, lokalne informacje i możliwe zmiany przed meczem.\n\n"
+        "Potem rozliczamy każdy typ. Historia wyników zasila statystyki, ranking rynków i trend zysku, dzięki czemu system uczy się odróżniać faktyczną przewagę od pozornie dobrego kursu."
+    )
 
 
 MIESIACE_PL = {1:"Styczeń",2:"Luty",3:"Marzec",4:"Kwiecień",5:"Maj",6:"Czerwiec",
