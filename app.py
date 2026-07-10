@@ -217,11 +217,51 @@ if len(df_analizy) > 0:
 
     df_analizy = df_analizy.drop(columns=["data_dt"])
 
+# Dane zapisane na stałe: historyczne miesiące oraz archiwum GitHub.
 df_archiwum_full = pd.concat([df_czerwiec, df_lipiec, df_archiwum], ignore_index=True, sort=False)
-df_archiwum_full["Data_dt"] = pd.to_datetime(df_archiwum_full["Data"], format="%d.%m.%Y", errors="coerce")
+df_archiwum_full["Data_dt"] = pd.to_datetime(
+    df_archiwum_full["Data"], format="%d.%m.%Y", errors="coerce"
+)
+
+# Rozliczone kupony z analizy pozostają w ostatnich 6 na stronie głównej,
+# ale od razu są doliczane do statystyk, wykresów i widoku archiwum.
+df_biezace_rozliczone = df_analizy[
+    df_analizy["wynik"].isin(["WYGRANA", "PRZEGRANA"])
+].copy()
+
+if not df_biezace_rozliczone.empty:
+    df_biezace_rozliczone["Data_dt"] = pd.to_datetime(
+        df_biezace_rozliczone["data"], format="%Y-%m-%d", errors="coerce"
+    )
+    df_biezace_rozliczone = pd.DataFrame({
+        "Data": df_biezace_rozliczone["Data_dt"].dt.strftime("%d.%m.%Y"),
+        "Sport": df_biezace_rozliczone["sport"],
+        "Rozgrywki": "",
+        "Mecz": df_biezace_rozliczone["mecz"],
+        "Rynek": df_biezace_rozliczone["rynek"],
+        "Pewnosc": df_biezace_rozliczone["pewnosc"],
+        "Stawka": pd.to_numeric(df_biezace_rozliczone["stawka"], errors="coerce").fillna(0),
+        "Kurs": pd.to_numeric(df_biezace_rozliczone["kurs"], errors="coerce").fillna(0),
+        "Godzina": "-",
+        "Status": df_biezace_rozliczone["wynik"],
+        "Analiza": df_biezace_rozliczone["analiza"],
+        "Data_dt": df_biezace_rozliczone["Data_dt"],
+    })
+else:
+    df_biezace_rozliczone = pd.DataFrame(columns=df_archiwum_full.columns)
+
+# Tabela raportowa nie jest zapisywana do GitHub. Dzięki temu ten sam kupon
+# nie zostanie zdublowany, gdy później automatycznie trafi do archiwum.csv.
+df_raport_full = pd.concat(
+    [df_archiwum_full, df_biezace_rozliczone], ignore_index=True, sort=False
+)
+df_raport_full["Stawka"] = pd.to_numeric(df_raport_full["Stawka"], errors="coerce").fillna(0)
+df_raport_full["Kurs"] = pd.to_numeric(df_raport_full["Kurs"], errors="coerce").fillna(0)
 
 # --- Dane pomocnicze do sekcji "żywych" ---
-rozliczone_all = df_archiwum_full[df_archiwum_full["Status"].isin(["WYGRANA", "PRZEGRANA"])].copy()
+rozliczone_all = df_raport_full[
+    df_raport_full["Status"].isin(["WYGRANA", "PRZEGRANA"])
+].copy()
 
 # Nagłówek statusu dnia (ostatnie 24h)
 dzis_ts = pd.Timestamp(datetime.today().date())
@@ -317,9 +357,9 @@ else:
     data_od = None
 
 if data_od is not None:
-    df_stats = df_archiwum_full[df_archiwum_full["Data_dt"] >= data_od]
+    df_stats = df_raport_full[df_raport_full["Data_dt"] >= data_od].copy()
 else:
-    df_stats = df_archiwum_full
+    df_stats = df_raport_full.copy()
 
 wygrane = df_stats[df_stats["Status"] == "WYGRANA"]
 przegrane = df_stats[df_stats["Status"] == "PRZEGRANA"]
@@ -495,14 +535,14 @@ if st.button("Policz stawkę"):
 st.divider()
 st.subheader("Archiwum kuponów")
 
-df_archiwum_full["MiesiacRok"] = df_archiwum_full["Data_dt"].apply(
+df_raport_full["MiesiacRok"] = df_raport_full["Data_dt"].apply(
     lambda d: f"{MIESIACE_PL[d.month]} {d.year}" if pd.notna(d) else "Nieznana data"
 )
-dostepne_miesiace = df_archiwum_full.sort_values("Data_dt", ascending=False)["MiesiacRok"].unique().tolist()
+dostepne_miesiace = df_raport_full.sort_values("Data_dt", ascending=False)["MiesiacRok"].unique().tolist()
 
 if len(dostepne_miesiace) > 0:
     wybrany_miesiac = st.selectbox("Wybierz miesiąc", dostepne_miesiace)
-    df_miesiac = df_archiwum_full[df_archiwum_full["MiesiacRok"] == wybrany_miesiac].drop(columns=["Data_dt", "MiesiacRok"])
+    df_miesiac = df_raport_full[df_raport_full["MiesiacRok"] == wybrany_miesiac].drop(columns=["Data_dt", "MiesiacRok"])
 
     c1, c2 = st.columns(2)
     sport_filter = c1.multiselect("Sport", options=df_miesiac["Sport"].unique(), default=df_miesiac["Sport"].unique())
@@ -557,9 +597,10 @@ if len(df_analizy) > 0:
                 r2 = github_put("analizy.csv", buf.getvalue(), sha_now, f"Zmieniono status: {wybrany_mecz} -> {nowy_status}")
 
                 if r2.status_code in [200, 201]:
-                    st.success(f"Status zaktualizowany na: {nowy_status}. Odśwież stronę, aby zobaczyć zmianę w tabeli.")
+                    st.success(f"Status zaktualizowany na: {nowy_status}. Trwa aktualizacja danych...")
                     if nowy_status == "WYGRANA":
                         st.balloons()
+                    st.rerun()
                 else:
                     st.error(f"Błąd zapisu do GitHub: {r2.status_code} — {r2.text}")
 else:
