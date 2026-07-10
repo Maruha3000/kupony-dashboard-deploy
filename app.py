@@ -680,3 +680,24 @@ with st.container():
                 st.success("Typ i analiza zostały zapisane na GitHub (status: OPEN).")
             else:
                 st.error(f"Błąd zapisu do GitHub: {r2.status_code} — {r2.text}")
+                st.markdown("---")
+st.subheader("Kalkulator X")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    a = st.number_input("A", value=0.0, step=0.1, key="calc_a")
+
+with col2:
+    b = st.number_input("B", value=0.0, step=0.1, key="calc_b")
+
+c = (a + b) / 2
+
+st.write(f"C = ({a} + {b}) / 2 = {c:.2f}")
+
+if c != 0:
+    x = 1 / (c / 100)
+    st.success(f"X = {x:.4f}")
+else:
+    st.error("C nie może być równe 0.")
+                
