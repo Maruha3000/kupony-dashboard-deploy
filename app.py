@@ -213,6 +213,22 @@ def opis_statusu_meczu(mecz):
     wynik = mapa.get(status, status)
     return f"{wynik} ({minute}')" if status == "IN_PLAY" and minute is not None else wynik
 
+@st.cache_data(ttl=60, show_spinner=False)
+def pobierz_mecze_tenisa(data_iso):
+    url = "https://www.thesportsdb.com/api/v1/json/123/eventsday.php"
+    response = requests.get(url, params={"d": data_iso, "s": "Tennis"}, timeout=12)
+    response.raise_for_status()
+    return response.json().get("events", []) or []
+
+def znajdz_wynik_tenisa(mecz_kuponu, mecze_api):
+    strony = _podziel_mecz(mecz_kuponu)
+    if len(strony) != 2: return None
+    a, b = _nazwa_do_porownania(strony[0]), _nazwa_do_porownania(strony[1])
+    for mecz in mecze_api:
+        nazwa = _nazwa_do_porownania(mecz.get("strEvent", ""))
+        if a and b and len(a & nazwa) > 0 and len(b & nazwa) > 0: return mecz
+    return None
+
 
 status_dnia_placeholder = st.empty()
 licznik_placeholder = st.empty()
@@ -645,46 +661,47 @@ else:
 
 st.divider()
 st.markdown("<span id='wyniki-live' class='section-anchor'></span>", unsafe_allow_html=True)
-st.subheader("🔴 Wyniki piłki na żywo")
-st.caption("Mecze z kuponów OPEN. Dane odświeżają się automatycznie co 60 sekund, gdy dashboard jest otwarty.")
+st.subheader("🔴 Wyniki live")
+st.caption("Piłka: football-data.org. Tenis: TheSportsDB (bezpłatne dane terminarza i rezultatów). Odświeżanie co 60 sekund.")
 
 @st.fragment(run_every=60)
 def panel_wynikow_live():
-    if "FOOTBALL_DATA_API_KEY" not in st.secrets:
-        st.warning("Brakuje FOOTBALL_DATA_API_KEY w Secrets Streamlit.")
-        return
     otwarte_pilka = df_analizy[(df_analizy["wynik"] == "OPEN") & (df_analizy["sport"].str.lower() == "pilka")].copy()
-    if otwarte_pilka.empty:
-        st.info("Brak otwartych kuponów piłkarskich do śledzenia.")
-        return
+    otwarte_tenis = df_analizy[(df_analizy["wynik"] == "OPEN") & (df_analizy["sport"].str.lower() == "tenis")].copy()
+    if otwarte_pilka.empty and otwarte_tenis.empty:
+        st.info("Brak otwartych kuponów piłkarskich ani tenisowych do śledzenia."); return
     if st.button("↻ Odśwież teraz", key="odswiez_wyniki_live"):
-        pobierz_mecze_pilki.clear()
-    try:
-        dzis_api = datetime.utcnow().strftime("%Y-%m-%d")
-        mecze_api = pobierz_mecze_pilki(dzis_api, st.secrets["FOOTBALL_DATA_API_KEY"])
-    except requests.RequestException as blad:
-        st.error(f"Nie udało się pobrać wyników: {blad}")
-        return
-    znalezione = 0
-    for _, kupon in otwarte_pilka.iterrows():
-        mecz = znajdz_wynik_dla_kuponu(kupon["mecz"], mecze_api)
-        if mecz is None:
-            st.warning(f"{kupon['mecz']} — nie znaleziono dziś w football-data.org.")
-            continue
-        znalezione += 1
-        score = mecz.get("score", {}).get("fullTime", {})
-        home_score = score.get("home") if score.get("home") is not None else "–"
-        away_score = score.get("away") if score.get("away") is not None else "–"
-        st.markdown(f"**{mecz['homeTeam']['name']} {home_score}:{away_score} {mecz['awayTeam']['name']}**  ")
-        start_raw = mecz.get("utcDate", "")
-        try:
-            start_bst = pd.to_datetime(start_raw, utc=True).tz_convert("Europe/London")
-            start_txt = start_bst.strftime("%d.%m.%Y, %H:%M BST")
-        except Exception:
-            start_txt = "brak danych"
-        st.caption(f"Start: {start_txt} · {opis_statusu_meczu(mecz)} · Kupon: {kupon['rynek']} · Aktualizacja: {datetime.now().strftime('%H:%M:%S')}")
-    if znalezione == 0:
-        st.info("Żaden z dzisiejszych meczów OPEN nie został jeszcze dopasowany. Nazwy drużyn w kuponie muszą być zbliżone do nazw z API.")
+        pobierz_mecze_pilki.clear(); pobierz_mecze_tenisa.clear()
+    dzis_api = datetime.utcnow().strftime("%Y-%m-%d")
+    if not otwarte_pilka.empty:
+        st.markdown("#### ⚽ Piłka nożna")
+        if "FOOTBALL_DATA_API_KEY" not in st.secrets: st.warning("Brakuje FOOTBALL_DATA_API_KEY w Secrets Streamlit.")
+        else:
+            try: mecze_api = pobierz_mecze_pilki(dzis_api, st.secrets["FOOTBALL_DATA_API_KEY"])
+            except requests.RequestException as blad: st.error(f"Nie udało się pobrać wyników piłki: {blad}"); mecze_api=[]
+            for _, kupon in otwarte_pilka.iterrows():
+                mecz = znajdz_wynik_dla_kuponu(kupon["mecz"], mecze_api)
+                if mecz is None: st.warning(f"{kupon['mecz']} — nie znaleziono dziś w football-data.org."); continue
+                score=mecz.get("score",{}).get("fullTime",{}); hs=score.get("home") if score.get("home") is not None else "–"; aw=score.get("away") if score.get("away") is not None else "–"
+                try: start_txt=pd.to_datetime(mecz.get("utcDate"),utc=True).tz_convert("Europe/London").strftime("%d.%m.%Y, %H:%M BST")
+                except Exception: start_txt="brak danych"
+                st.markdown(f"**{mecz['homeTeam']['name']} {hs}:{aw} {mecz['awayTeam']['name']}**")
+                st.caption(f"Start: {start_txt} · {opis_statusu_meczu(mecz)} · Kupon: {kupon['rynek']}")
+    if not otwarte_tenis.empty:
+        st.markdown("#### 🎾 Tenis")
+        try: mecze_tenisa=pobierz_mecze_tenisa(dzis_api)
+        except requests.RequestException as blad: st.error(f"Nie udało się pobrać danych tenisa: {blad}"); mecze_tenisa=[]
+        for _, kupon in otwarte_tenis.iterrows():
+            mecz=znajdz_wynik_tenisa(kupon["mecz"],mecze_tenisa)
+            if mecz is None: st.warning(f"{kupon['mecz']} — nie znaleziono dziś w TheSportsDB."); continue
+            hs=mecz.get("intHomeScore"); aw=mecz.get("intAwayScore"); wynik=f"{hs}:{aw}" if hs is not None and aw is not None else "– : –"
+            start_raw=mecz.get("strTimestamp") or f"{mecz.get('dateEvent','')}T{mecz.get('strTime','')}"
+            try: start_txt=pd.to_datetime(start_raw).tz_localize("Europe/London").strftime("%d.%m.%Y, %H:%M BST")
+            except Exception: start_txt=mecz.get("strTime") or "brak danych"
+            status=mecz.get("strStatus") or ("🏁 Zakończony" if hs is not None else "🕒 Zaplanowany / brak statusu live")
+            st.markdown(f"**{mecz.get('strEvent', kupon['mecz'])} — {wynik}**")
+            st.caption(f"Turniej: {mecz.get('strLeague','brak danych')} · Start: {start_txt} · {status} · Kupon: {kupon['rynek']}")
+    st.caption(f"Ostatnia aktualizacja panelu: {datetime.now().strftime('%H:%M:%S')}")
 
 panel_wynikow_live()
 
