@@ -220,13 +220,22 @@ def pobierz_mecze_tenisa(data_iso):
     response.raise_for_status()
     return response.json().get("events", []) or []
 
+def _podobny_token(tokeny_a, tokeny_b):
+    # Obsługuje polskie znaki i odmiany bez końcowej litery, np. Nosková / Noskova.
+    for a in tokeny_a:
+        for b in tokeny_b:
+            if a == b or (len(a) >= 5 and len(b) >= 5 and (a.startswith(b[:5]) or b.startswith(a[:5]))):
+                return True
+    return False
+
 def znajdz_wynik_tenisa(mecz_kuponu, mecze_api):
     strony = _podziel_mecz(mecz_kuponu)
     if len(strony) != 2: return None
     a, b = _nazwa_do_porownania(strony[0]), _nazwa_do_porownania(strony[1])
     for mecz in mecze_api:
         nazwa = _nazwa_do_porownania(mecz.get("strEvent", ""))
-        if a and b and len(a & nazwa) > 0 and len(b & nazwa) > 0: return mecz
+        if a and b and _podobny_token(a, nazwa) and _podobny_token(b, nazwa):
+            return mecz
     return None
 
 
