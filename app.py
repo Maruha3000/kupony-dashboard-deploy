@@ -89,7 +89,7 @@ st.markdown(
     .top-nav a { flex:0 0 auto; text-decoration:none; color:#cfe4ff; background:rgba(20,35,58,.82); border:1px solid rgba(96,165,250,.34); border-radius:999px; padding:8px 12px; font-size:.81rem; font-weight:700; transition:.18s; }
     .top-nav a:hover { color:#fff; border-color:#7dd3fc; background:rgba(30,58,100,.95); transform:translateY(-1px); }
     .top-nav .nav-primary { color:#ecfdf5; background:linear-gradient(135deg,#047857,#0f766e); border-color:rgba(110,231,183,.62); }
-    .section-anchor { position:relative; top:-82px; visibility:hidden; }
+    .section-anchor { display:block; height:1px; visibility:hidden; scroll-margin-top:82px; }
     @media (max-width: 640px) {
       .block-container { padding: 4.05rem .75rem 2rem; }
       .hero-card { padding: 22px 20px; border-radius: 16px; }
