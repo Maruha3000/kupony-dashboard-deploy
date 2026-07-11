@@ -6,6 +6,7 @@ import random
 from datetime import datetime, timedelta
 import requests
 import base64
+import re
 
 try:
     import plotly.graph_objects as go
@@ -24,10 +25,10 @@ st.markdown(
             radial-gradient(circle at 92% 15%, rgba(129, 140, 248, .12), transparent 26%),
             #0b1220;
         color: #e7eefb;
-    } .block-container { max-width: 1240px; padding-top: 8.9rem; padding-bottom: 3rem; }
-    h1, h2, h3 { color: #f8fbff !important; letter-spacing: -.02em; }
+    }
     [data-testid="stHeader"] { background: rgba(11, 18, 32, .72); }
-   
+    .block-container { max-width: 1240px; padding-top: 8.9rem; padding-bottom: 3rem; }
+    h1, h2, h3 { color: #f8fbff !important; letter-spacing: -.02em; }
     h2 { margin-top: 1.7rem !important; padding-bottom: .45rem; border-bottom: 1px solid rgba(148, 163, 184, .18); }
     [data-testid="stMetric"] {
         background: linear-gradient(145deg, rgba(26,39,64,.94), rgba(16,27,46,.94));
@@ -99,7 +100,7 @@ st.markdown(
     }
     </style>
     <nav class='top-nav' aria-label='Nawigacja panelu'>
-      <a href='#home'>⌂ Home</a><a href='#statystyki'>📊 Statystyki</a><a href='#typy'>🎯 Typy</a>
+      <a href='#home'>⌂ Home</a><a href='#statystyki'>📊 Statystyki</a><a href='#typy'>🎯 Typy</a><a href='#wyniki-live'>🔴 Wyniki live</a>
       <a href='#kalkulatory'>🧮 Kalkulatory</a><a href='#archiwum'>🗂 Archiwum</a><a class='nav-primary' href='#dodaj-typ'>✚ Dodaj typ</a>
     </nav>
     <span id='home' class='section-anchor'></span>
@@ -175,6 +176,42 @@ def dodaj_pola_rynku(df):
 
 def normalizuj_rynek(wartosc): return str(wartosc)
 def normalizuj_kolumne_rynku(df, kolumna): return df.copy()
+
+# --- Wyniki piłki nożnej: football-data.org ---
+def _nazwa_do_porownania(nazwa):
+    tekst = str(nazwa or "").lower()
+    tekst = tekst.translate(str.maketrans("ąćęłńóśźż", "acelnoszz"))
+    return set(re.findall(r"[a-z0-9]+", tekst))
+
+def _podziel_mecz(mecz):
+    return re.split(r"\s+(?:vs|v|-)\s+", str(mecz), maxsplit=1, flags=re.I)
+
+@st.cache_data(ttl=60, show_spinner=False)
+def pobierz_mecze_pilki(data_iso, token):
+    url = "https://api.football-data.org/v4/matches"
+    response = requests.get(url, headers={"X-Auth-Token": token}, params={"date": data_iso}, timeout=12)
+    response.raise_for_status()
+    return response.json().get("matches", [])
+
+def znajdz_wynik_dla_kuponu(mecz_kuponu, mecze_api):
+    strony = _podziel_mecz(mecz_kuponu)
+    if len(strony) != 2: return None
+    a, b = _nazwa_do_porownania(strony[0]), _nazwa_do_porownania(strony[1])
+    if not a or not b: return None
+    for mecz in mecze_api:
+        home = _nazwa_do_porownania(mecz.get("homeTeam", {}).get("name", ""))
+        away = _nazwa_do_porownania(mecz.get("awayTeam", {}).get("name", ""))
+        direct = len(a & home) > 0 and len(b & away) > 0
+        reversed_order = len(a & away) > 0 and len(b & home) > 0
+        if direct or reversed_order: return mecz
+    return None
+
+def opis_statusu_meczu(mecz):
+    status = mecz.get("status", "SCHEDULED")
+    minute = mecz.get("minute")
+    mapa = {"IN_PLAY":"🔴 W grze", "PAUSED":"⏸ Przerwa", "TIMED":"🕒 Zaplanowany", "SCHEDULED":"🕒 Zaplanowany", "FINISHED":"🏁 Zakończony", "POSTPONED":"⚠️ Przełożony", "CANCELLED":"⚠️ Odwołany", "SUSPENDED":"⚠️ Przerwany"}
+    wynik = mapa.get(status, status)
+    return f"{wynik} ({minute}')" if status == "IN_PLAY" and minute is not None else wynik
 
 
 status_dnia_placeholder = st.empty()
@@ -605,6 +642,45 @@ if len(df_analizy) > 0:
             st.markdown('</div>', unsafe_allow_html=True)
 else:
     st.info("Brak zapisanych analiz — dodaj pierwszy typ poniżej.")
+
+st.divider()
+st.markdown("<span id='wyniki-live' class='section-anchor'></span>", unsafe_allow_html=True)
+st.subheader("🔴 Wyniki piłki na żywo")
+st.caption("Mecze z kuponów OPEN. Dane odświeżają się automatycznie co 60 sekund, gdy dashboard jest otwarty.")
+
+@st.fragment(run_every=60)
+def panel_wynikow_live():
+    if "FOOTBALL_DATA_API_KEY" not in st.secrets:
+        st.warning("Brakuje FOOTBALL_DATA_API_KEY w Secrets Streamlit.")
+        return
+    otwarte_pilka = df_analizy[(df_analizy["wynik"] == "OPEN") & (df_analizy["sport"].str.lower() == "pilka")].copy()
+    if otwarte_pilka.empty:
+        st.info("Brak otwartych kuponów piłkarskich do śledzenia.")
+        return
+    if st.button("↻ Odśwież teraz", key="odswiez_wyniki_live"):
+        pobierz_mecze_pilki.clear()
+    try:
+        dzis_api = datetime.utcnow().strftime("%Y-%m-%d")
+        mecze_api = pobierz_mecze_pilki(dzis_api, st.secrets["FOOTBALL_DATA_API_KEY"])
+    except requests.RequestException as blad:
+        st.error(f"Nie udało się pobrać wyników: {blad}")
+        return
+    znalezione = 0
+    for _, kupon in otwarte_pilka.iterrows():
+        mecz = znajdz_wynik_dla_kuponu(kupon["mecz"], mecze_api)
+        if mecz is None:
+            st.warning(f"{kupon['mecz']} — nie znaleziono dziś w football-data.org.")
+            continue
+        znalezione += 1
+        score = mecz.get("score", {}).get("fullTime", {})
+        home_score = score.get("home") if score.get("home") is not None else "–"
+        away_score = score.get("away") if score.get("away") is not None else "–"
+        st.markdown(f"**{mecz['homeTeam']['name']} {home_score}:{away_score} {mecz['awayTeam']['name']}**  ")
+        st.caption(f"{opis_statusu_meczu(mecz)} · Kupon: {kupon['rynek']} · Aktualizacja: {datetime.now().strftime('%H:%M:%S')}")
+    if znalezione == 0:
+        st.info("Żaden z dzisiejszych meczów OPEN nie został jeszcze dopasowany. Nazwy drużyn w kuponie muszą być zbliżone do nazw z API.")
+
+panel_wynikow_live()
 
 st.divider()
 st.markdown("<span id='kalkulatory' class='section-anchor'></span>", unsafe_allow_html=True)
