@@ -676,7 +676,13 @@ def panel_wynikow_live():
         home_score = score.get("home") if score.get("home") is not None else "–"
         away_score = score.get("away") if score.get("away") is not None else "–"
         st.markdown(f"**{mecz['homeTeam']['name']} {home_score}:{away_score} {mecz['awayTeam']['name']}**  ")
-        st.caption(f"{opis_statusu_meczu(mecz)} · Kupon: {kupon['rynek']} · Aktualizacja: {datetime.now().strftime('%H:%M:%S')}")
+        start_raw = mecz.get("utcDate", "")
+        try:
+            start_bst = pd.to_datetime(start_raw, utc=True).tz_convert("Europe/London")
+            start_txt = start_bst.strftime("%d.%m.%Y, %H:%M BST")
+        except Exception:
+            start_txt = "brak danych"
+        st.caption(f"Start: {start_txt} · {opis_statusu_meczu(mecz)} · Kupon: {kupon['rynek']} · Aktualizacja: {datetime.now().strftime('%H:%M:%S')}")
     if znalezione == 0:
         st.info("Żaden z dzisiejszych meczów OPEN nie został jeszcze dopasowany. Nazwy drużyn w kuponie muszą być zbliżone do nazw z API.")
 
