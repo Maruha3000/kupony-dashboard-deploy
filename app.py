@@ -26,7 +26,7 @@ st.markdown(
         color: #e7eefb;
     }
     [data-testid="stHeader"] { background: rgba(11, 18, 32, .72); }
-    .block-container { max-width: 1240px; padding-top: 7.7rem; padding-bottom: 3rem; }
+    .block-container { max-width: 1240px; padding-top: 8.9rem; padding-bottom: 3rem; }
     h1, h2, h3 { color: #f8fbff !important; letter-spacing: -.02em; }
     h2 { margin-top: 1.7rem !important; padding-bottom: .45rem; border-bottom: 1px solid rgba(148, 163, 184, .18); }
     [data-testid="stMetric"] {
@@ -85,16 +85,16 @@ st.markdown(
     .hero-title span { background: linear-gradient(90deg,#7dd3fc,#a5b4fc); -webkit-background-clip:text; color:transparent; }
     .hero-copy { color:#c6d4e9; max-width:760px; line-height:1.65; margin:0; }
     .live-pill { display:inline-block; margin-top:16px; color:#bbf7d0; background:rgba(34,197,94,.13); border:1px solid rgba(34,197,94,.31); border-radius:999px; padding:6px 11px; font-size:.78rem; font-weight:700; letter-spacing:.5px; }
-    .top-nav { position:fixed; top:42px; left:50%; transform:translateX(-50%); z-index:99999; width:min(1220px, calc(100% - 24px)); display:flex; gap:8px; overflow-x:auto; padding:8px 10px 10px; scrollbar-width:thin; background:rgba(8,16,30,.91); border:1px solid rgba(96,165,250,.24); border-radius:14px; box-shadow:0 10px 28px rgba(0,0,0,.28); }
+    .top-nav { position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:99999; width:min(1220px, calc(100% - 24px)); display:flex; gap:8px; overflow-x:auto; padding:8px 10px 10px; scrollbar-width:thin; background:rgba(8,16,30,.91); border:1px solid rgba(96,165,250,.24); border-radius:14px; box-shadow:0 10px 28px rgba(0,0,0,.28); }
     .top-nav a { flex:0 0 auto; text-decoration:none; color:#cfe4ff; background:rgba(20,35,58,.82); border:1px solid rgba(96,165,250,.34); border-radius:999px; padding:8px 12px; font-size:.81rem; font-weight:700; transition:.18s; }
     .top-nav a:hover { color:#fff; border-color:#7dd3fc; background:rgba(30,58,100,.95); transform:translateY(-1px); }
     .top-nav .nav-primary { color:#ecfdf5; background:linear-gradient(135deg,#047857,#0f766e); border-color:rgba(110,231,183,.62); }
     .section-anchor { display:block; height:1px; visibility:hidden; scroll-margin-top:82px; }
     @media (max-width: 640px) {
-      .block-container { padding: 7.1rem .75rem 2rem; }
+      .block-container { padding: 8.2rem .75rem 2rem; }
       .hero-card { padding: 22px 20px; border-radius: 16px; }
       .hero-title { font-size: 2rem; }
-      .top-nav { top:38px; width:calc(100% - 16px); gap:7px; padding:7px 8px; border-radius:12px; }
+      .top-nav { top:52px; width:calc(100% - 16px); gap:7px; padding:7px 8px; border-radius:12px; }
       .top-nav a { padding:7px 10px; font-size:.75rem; }
     }
     </style>
@@ -607,6 +607,7 @@ else:
     st.info("Brak zapisanych analiz — dodaj pierwszy typ poniżej.")
 
 st.divider()
+st.markdown("<span id='kalkulatory' class='section-anchor'></span>", unsafe_allow_html=True)
 st.subheader("💰 Kalkulator bezpiecznej stawki")
 
 st.write("Wpisz swój aktualny bank, a system podliczy bezpieczną stawkę na podstawie zasad ochrony kapitału.")
