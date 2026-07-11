@@ -136,31 +136,34 @@ def github_put(path, content_str, sha, message):
         payload["sha"] = sha
     return requests.put(url, headers=headers, json=payload)
 
-def normalizuj_rynek(wartosc):
-    """Ujednolica nazwy identycznych rynków przed archiwum i statystykami."""
-    if pd.isna(wartosc):
-        return wartosc
-
-    rynek = " ".join(str(wartosc).strip().split())
-    # Ten sam rynek piłkarski bywał wpisywany jako: Under 2,5,
-    # Under 2.5 gole albo Under 2.5 goli. W aplikacji ma zawsze jedną nazwę.
+def rozbij_rynek(rynek, sport="", mecz=""):
     import re
-    dopasowanie = re.fullmatch(
-        r"(?i)(over|under)\s*(\d+(?:[.,]\d+)?)\s*(?:gol|gole|goli)?", rynek
-    )
-    if dopasowanie:
-        kierunek = dopasowanie.group(1).capitalize()
-        linia = dopasowanie.group(2).replace(",", ".")
-        return f"{kierunek} {linia}"
+    raw = " ".join(str(rynek or "").strip().split()); low = raw.lower().replace(",", ".")
+    m = re.search(r"\b(over|under)\s*(\d+(?:[.,]\d+)?)", raw, re.I)
+    if m:
+        opis = f"{m.group(1).capitalize()} {m.group(2).replace(',', '.')}"
+        if "set" in low: return "Sety — suma meczu", opis + " sety"
+        if "gem" in low: return "Gemy — suma meczu", opis + " gemów"
+        if "pkt" in low or "punkt" in low: return "Punkty — suma meczu", opis + " pkt"
+        if "hokej" in str(sport).lower() or "60min" in low: return "Gole — suma meczu (hokej)", opis + " goli"
+        return "Gole — suma meczu", opis + " goli"
+    if "btts" in low: return "BTTS", "Tak" if "yes" in low or "tak" in low else "Nie"
+    if "handicap" in low or re.search(r"(?<!\d)[+-]\d+(?:[.,]\d+)?$", low): return "Handicap", re.sub(r"(?i)\b(handicap|hcp)\b", "", raw).strip()
+    if any(x in low for x in [" ml", "wygrywa", "to win", "zwycięzca", "1x2"]): return "Zwycięzca meczu", re.sub(r"(?i)\s*(ml|to win|wygrywa)", "", raw).strip()
+    if "win to nil" in low: return "Wygrana do zera", raw
+    if "double chance" in low: return "Podwójna szansa", raw.split()[-1]
+    return "Inne", raw
 
-    return rynek
-
-
-def normalizuj_kolumne_rynku(df, kolumna):
-    if kolumna in df.columns:
-        df = df.copy()
-        df[kolumna] = df[kolumna].apply(normalizuj_rynek)
+def dodaj_pola_rynku(df):
+    df = df.copy()
+    p = df.apply(lambda r: rozbij_rynek(r.get("Rynek", ""), str(r.get("Sport", "")), r.get("Mecz", "")), axis=1)
+    df["Kategoria rynku"] = [x[0] for x in p]
+    df["Typ / selekcja"] = [x[1] for x in p]
     return df
+
+def normalizuj_rynek(wartosc): return str(wartosc)
+def normalizuj_kolumne_rynku(df, kolumna): return df.copy()
+
 
 status_dnia_placeholder = st.empty()
 licznik_placeholder = st.empty()
@@ -338,6 +341,7 @@ df_raport_full = pd.concat(
 )
 df_raport_full["Stawka"] = pd.to_numeric(df_raport_full["Stawka"], errors="coerce").fillna(0)
 df_raport_full["Kurs"] = pd.to_numeric(df_raport_full["Kurs"], errors="coerce").fillna(0)
+df_raport_full = dodaj_pola_rynku(df_raport_full)
 
 # --- Dane pomocnicze do sekcji "żywych" ---
 rozliczone_all = df_raport_full[
@@ -517,10 +521,10 @@ st.divider()
 st.subheader("🏆 Ranking rynków")
 st.caption("Najskuteczniejsze rynki na podstawie rozliczonych kuponów.")
 if len(rozliczone_all) > 0:
-    ranking = rozliczone_all.groupby("Rynek").agg(
-        Kupony=("Status", "count"),
-        Wygrane=("Status", lambda x: (x == "WYGRANA").sum())
+    ranking = rozliczone_all.groupby(["Sport", "Kategoria rynku"]).agg(
+        Kupony=("Status", "count"), Wygrane=("Status", lambda x: (x == "WYGRANA").sum())
     ).reset_index()
+    ranking["Rynek"] = ranking["Sport"] + " — " + ranking["Kategoria rynku"]
     ranking = ranking[ranking["Kupony"] >= 2].copy()
     ranking["Win rate %"] = (ranking["Wygrane"] / ranking["Kupony"] * 100).round(0)
     ranking = ranking.sort_values("Win rate %", ascending=False)
@@ -626,7 +630,9 @@ dostepne_miesiace = df_raport_full.sort_values("Data_dt", ascending=False)["Mies
 
 if len(dostepne_miesiace) > 0:
     wybrany_miesiac = st.selectbox("Wybierz miesiąc", dostepne_miesiace)
-    df_miesiac = df_raport_full[df_raport_full["MiesiacRok"] == wybrany_miesiac].drop(columns=["Data_dt", "MiesiacRok"])
+    df_miesiac = df_raport_full[df_raport_full["MiesiacRok"] == wybrany_miesiac].copy()
+    kolumny_archiwum = ["Data", "Sport", "Rozgrywki", "Mecz", "Kategoria rynku", "Typ / selekcja", "Pewnosc", "Stawka", "Kurs", "Godzina", "Status", "Analiza"]
+    df_miesiac = df_miesiac[[c for c in kolumny_archiwum if c in df_miesiac.columns]]
 
     c1, c2 = st.columns(2)
     sport_filter = c1.multiselect("Sport", options=df_miesiac["Sport"].unique(), default=df_miesiac["Sport"].unique())
@@ -693,82 +699,33 @@ else:
 
 st.divider()
 st.subheader("Dodaj typ")
-st.caption("Dodanie typu wymaga podania kodu PIN.")
+st.caption("Wybierz kategorię rynku pasującą do sportu. Archiwum zapisuje kategorię i selekcję osobno.")
+rynki = {"Pilka":["Zwycięzca meczu","Gole — suma meczu","BTTS","Handicap","Podwójna szansa","Inne"], "Tenis":["Zwycięzca meczu","Sety — suma meczu","Gemy — suma meczu","Handicap","Inne"], "Koszykowka":["Zwycięzca meczu","Punkty — suma meczu","Handicap","Inne"], "Hokej":["Zwycięzca meczu","Gole — suma meczu (hokej)","Handicap","Inne"]}
+sporty=["Pilka","Tenis","Hokej","Koszykowka","Siatkowka","Baseball","Rugby","Snooker","Darts","MMA/Boks","Inne"]
+a,b=st.columns(2); data_input=a.date_input("Data meczu",value=datetime.today()); sport_input=b.selectbox("Sport",sporty)
+a,b=st.columns(2); mecz_input=a.text_input("Mecz",placeholder="np. Barcelona vs Inter"); kategoria=b.selectbox("Kategoria rynku",rynki.get(sport_input,["Zwycięzca meczu","Handicap","Inne"]))
+uczestnicy=[x.strip() for x in __import__("re").split(r"\s+(?:vs|v|-)\s+",mecz_input,maxsplit=1,flags=__import__("re").I)]
+if "suma" in kategoria:
+    a,b=st.columns(2); kierunek=a.selectbox("Kierunek",["Over","Under"]); linia=b.text_input("Linia",placeholder="np. 2.5 / 215.5 / 36.5")
+    jednostka="pkt" if "Punkty" in kategoria else ("sety" if "Sety" in kategoria else ("gemów" if "Gemy" in kategoria else "goli")); selekcja=f"{kierunek} {linia} {jednostka}" if linia else ""
+elif kategoria=="BTTS": selekcja=st.selectbox("Typ / selekcja",["Tak","Nie"])
+elif kategoria=="Handicap":
+    a,b=st.columns(2); strona=a.selectbox("Drużyna / zawodnik",uczestnicy if len(uczestnicy)==2 else ["Gospodarze","Goście"]); linia=b.text_input("Linia handicapu",placeholder="np. -1.5 albo +1.5"); selekcja=f"{strona} {linia}" if linia else ""
+elif kategoria=="Zwycięzca meczu": selekcja=st.selectbox("Typ / selekcja",uczestnicy if len(uczestnicy)==2 else ["Gospodarze","Goście"])
+elif kategoria=="Podwójna szansa": selekcja=st.selectbox("Typ / selekcja",["1X","X2","12"])
+else: selekcja=st.text_input("Typ / selekcja")
+a,b=st.columns(2); pewnosc=a.selectbox("Poziom pewności",["Pewny","Średni","Ryzykowny"]); stawka=b.number_input("Stawka GBP",min_value=0.0,step=.5)
+kurs=st.number_input("Kurs WH",min_value=1.0,step=.01); analiza=st.text_area("Twoja analiza (opis po ludzku)"); pin=st.text_input("Kod PIN",type="password",max_chars=4,key="pin_dodaj")
+if st.button("Zapisz typ i analizę"):
+    if pin != st.secrets["APP_PIN"]: st.error("Nieprawidłowy kod PIN.")
+    elif not mecz_input or not selekcja or not analiza: st.error("Uzupełnij mecz, selekcję, wymaganą linię i analizę.")
+    else:
+        nowy=pd.DataFrame([{"data":data_input.strftime("%Y-%m-%d"),"sport":sport_input,"mecz":mecz_input,"rynek":f"{kategoria}: {selekcja}","pewnosc":pewnosc,"stawka":f"{stawka:.2f}","kurs":f"{kurs:.2f}","wynik":"OPEN","analiza":analiza.replace("\n"," ").strip()}])
+        content_now,sha_now=github_get("analizy.csv"); df_now=pd.read_csv(StringIO(content_now)) if content_now else pd.DataFrame(columns=nowy.columns); df_now=pd.concat([df_now,nowy],ignore_index=True); buf=StringIO(); df_now.to_csv(buf,index=False); r=github_put("analizy.csv",buf.getvalue(),sha_now,f"Dodano typ: {mecz_input}")
+        if r.status_code in [200,201]: st.success("Typ zapisany."); st.rerun()
+        else: st.error(f"Błąd zapisu: {r.status_code}")
 
-opcje_sportow = [
-    "Pilka", "Tenis", "Hokej", "Koszykowka", "Siatkowka",
-    "Baseball", "Rugby", "Snooker", "Darts", "MMA/Boks", "Inne"
-]
-
-opcje_rynkow = [
-    "1X2 - Gospodarze", "1X2 - Remis", "1X2 - Gość",
-    "Over 0.5", "Under 0.5", "Over 1.5", "Under 1.5",
-    "Over 2.5", "Under 2.5", "Over 3.5", "Under 3.5",
-    "Over 4.5", "Under 4.5", "BTTS Yes", "BTTS No",
-    "Handicap -1", "Handicap -1.5", "Handicap -2",
-    "Handicap +1", "Handicap +1.5", "Handicap +2",
-    "Double Chance 1X", "Double Chance X2", "Double Chance 12",
-    "Win to Nil - Gospodarze", "Win to Nil - Gość",
-    "Correct Score", "Zwycięzca meczu (ML)",
-    "Over/Under sety", "Over/Under gemy",
-    "Over/Under punkty", "Over/Under goli w hokeju", "Inne"
-]
-
-with st.container():
-    col_a, col_b = st.columns(2)
-    data_input = col_a.date_input("Data meczu", value=datetime.today())
-    sport_input = col_b.selectbox("Sport", opcje_sportow)
-
-    col_c, col_d = st.columns(2)
-    mecz_input = col_c.text_input("Mecz", placeholder="np. Barcelona vs Inter")
-    rynek_input_analiza = col_d.selectbox("Rynek", opcje_rynkow)
-
-    col_e, col_f = st.columns(2)
-    pewnosc_input_analiza = col_e.selectbox("Poziom pewności", ["Pewny", "Sredni", "Ryzykowny"])
-    stawka_input = col_f.number_input("Stawka (GBP)", min_value=0.0, step=0.5)
-
-    kurs_input_analiza = st.number_input("Kurs WH", min_value=1.0, step=0.01)
-
-    analiza_input = st.text_area(
-        "Twoja analiza (opis po ludzku)",
-        placeholder="Tutaj wklej swoją analizę meczu w zwykłym języku..."
-    )
-
-    pin_input_dodaj = st.text_input("Kod PIN", type="password", max_chars=4, key="pin_dodaj")
-
-    if st.button("Zapisz typ i analizę"):
-        if pin_input_dodaj != st.secrets["APP_PIN"]:
-            st.error("Nieprawidłowy kod PIN. Typ nie został zapisany.")
-        elif not mecz_input or not analiza_input:
-            st.error("Uzupełnij co najmniej nazwę meczu i analizę.")
-        else:
-            nowy_wiersz = pd.DataFrame([{
-                "data": data_input.strftime("%Y-%m-%d"),
-                "sport": sport_input,
-                "mecz": mecz_input,
-                "rynek": rynek_input_analiza,
-                "pewnosc": pewnosc_input_analiza,
-                "stawka": f"{stawka_input:.2f}",
-                "kurs": f"{kurs_input_analiza:.2f}",
-                "wynik": "OPEN",
-                "analiza": analiza_input.replace("\n", " ").strip()
-            }])
-
-            content_now, sha_now = github_get("analizy.csv")
-            if content_now:
-                df_now = pd.read_csv(StringIO(content_now))
-            else:
-                df_now = pd.DataFrame(columns=["data","sport","mecz","rynek","pewnosc","stawka","kurs","wynik","analiza"])
-
-            df_now = pd.concat([df_now, nowy_wiersz], ignore_index=True)
-            buf = StringIO(); df_now.to_csv(buf, index=False)
-            r2 = github_put("analizy.csv", buf.getvalue(), sha_now, f"Dodano typ: {mecz_input}")
-
-            if r2.status_code in [200, 201]:
-                st.success("Typ i analiza zostały zapisane na GitHub (status: OPEN).")
-            else:
-                st.error(f"Błąd zapisu do GitHub: {r2.status_code} — {r2.text}")
-                st.markdown("---")
+st.markdown("---")
 st.subheader("🧮 Kalkulator X")
 st.caption("Wzory: C = (A + B) / 2 oraz X = 1 / (C / 100) = 100 / C.")
 
