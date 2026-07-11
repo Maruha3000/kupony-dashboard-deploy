@@ -24,10 +24,10 @@ st.markdown(
             radial-gradient(circle at 92% 15%, rgba(129, 140, 248, .12), transparent 26%),
             #0b1220;
         color: #e7eefb;
-    }
-    [data-testid="stHeader"] { background: rgba(11, 18, 32, .72); }
-    .block-container { max-width: 1240px; padding-top: 8.9rem; padding-bottom: 3rem; }
+    } .block-container { max-width: 1240px; padding-top: 8.9rem; padding-bottom: 3rem; }
     h1, h2, h3 { color: #f8fbff !important; letter-spacing: -.02em; }
+    [data-testid="stHeader"] { background: rgba(11, 18, 32, .72); }
+   
     h2 { margin-top: 1.7rem !important; padding-bottom: .45rem; border-bottom: 1px solid rgba(148, 163, 184, .18); }
     [data-testid="stMetric"] {
         background: linear-gradient(145deg, rgba(26,39,64,.94), rgba(16,27,46,.94));
@@ -89,7 +89,7 @@ st.markdown(
     .top-nav a { flex:0 0 auto; text-decoration:none; color:#cfe4ff; background:rgba(20,35,58,.82); border:1px solid rgba(96,165,250,.34); border-radius:999px; padding:8px 12px; font-size:.81rem; font-weight:700; transition:.18s; }
     .top-nav a:hover { color:#fff; border-color:#7dd3fc; background:rgba(30,58,100,.95); transform:translateY(-1px); }
     .top-nav .nav-primary { color:#ecfdf5; background:linear-gradient(135deg,#047857,#0f766e); border-color:rgba(110,231,183,.62); }
-    .section-anchor { display:block; height:1px; visibility:hidden; scroll-margin-top:82px; }
+    .section-anchor { display:block; height:1px; visibility:hidden; scroll-margin-top:132px; }
     @media (max-width: 640px) {
       .block-container { padding: 8.2rem .75rem 2rem; }
       .hero-card { padding: 22px 20px; border-radius: 16px; }
@@ -608,32 +608,54 @@ else:
 
 st.divider()
 st.markdown("<span id='kalkulatory' class='section-anchor'></span>", unsafe_allow_html=True)
-st.subheader("💰 Kalkulator bezpiecznej stawki")
+col_bank_calc, col_x_calc = st.columns(2)
+with col_bank_calc:
+    st.subheader("💰 Kalkulator bezpiecznej stawki")
+    st.write("Wpisz swój aktualny bank, a system podliczy bezpieczną stawkę na podstawie zasad ochrony kapitału.")
 
-st.write("Wpisz swój aktualny bank, a system podliczy bezpieczną stawkę na podstawie zasad ochrony kapitału.")
+    bank_bazowy = 28.0
+    stawki_bazowe = {"Pewny": 1.50, "Sredni": 1.00, "Ryzykowny": 0.50}
 
-bank_bazowy = 28.0
-stawki_bazowe = {"Pewny": 1.50, "Sredni": 1.00, "Ryzykowny": 0.50}
+    bank_uzytkownika = st.number_input("Twój aktualny bank (GBP)", min_value=1.0, value=28.0, step=1.0, key="bank_użytkownika_input")
+    pewnosc_bank_input = st.selectbox("Poziom pewności zakładu", ["Pewny", "Sredni", "Ryzykowny"], key="pewnosc_bank_select")
 
-col_bank1, col_bank2 = st.columns(2)
-bank_uzytkownika = col_bank1.number_input("Twój aktualny bank (GBP)", min_value=1.0, value=28.0, step=1.0)
-pewnosc_bank_input = col_bank2.selectbox("Poziom pewności zakładu", ["Pewny", "Sredni", "Ryzykowny"])
+    if st.button("Policz stawkę", key="policz_stawke_btn"):
+        wspolczynnik = bank_uzytkownika / bank_bazowy
+        stawka_rekomendowana = round(stawki_bazowe[pewnosc_bank_input] * wspolczynnik, 2)
+        procent_banku = round((stawka_rekomendowana / bank_uzytkownika) * 100, 1)
 
-if st.button("Policz stawkę"):
-    wspolczynnik = bank_uzytkownika / bank_bazowy
-    stawka_rekomendowana = round(stawki_bazowe[pewnosc_bank_input] * wspolczynnik, 2)
-    procent_banku = round((stawka_rekomendowana / bank_uzytkownika) * 100, 1)
+        st.success(
+            f"Przy banku {bank_uzytkownika:.2f} GBP i pewności '{pewnosc_bank_input}', "
+            f"bezpieczna stawka to około **{stawka_rekomendowana} GBP** "
+            f"(to około {procent_banku}% Twojego banku)."
+        )
+        st.caption(
+            "To przeliczenie bazuje na zasadzie, że przy banku 28 GBP stawki wynoszą: "
+            "Pewny 1.50 GBP, Sredni 1.00 GBP, Ryzykowny 0.50 GBP — czyli od 1.8% do 5.4% banku, "
+            "zależnie od poziomu pewności."
+        )
 
-    st.success(
-        f"Przy banku {bank_uzytkownika:.2f} GBP i pewności '{pewnosc_bank_input}', "
-        f"bezpieczna stawka to około **{stawka_rekomendowana} GBP** "
-        f"(to około {procent_banku}% Twojego banku)."
-    )
-    st.caption(
-        "To przeliczenie bazuje na zasadzie, że przy banku 28 GBP stawki wynoszą: "
-        "Pewny 1.50 GBP, Sredni 1.00 GBP, Ryzykowny 0.50 GBP — czyli od 1.8% do 5.4% banku, "
-        "zależnie od poziomu pewności."
-    )
+with col_x_calc:
+    st.subheader("🧮 Kalkulator X")
+    st.caption("Wzory: C = (A + B) / 2 oraz X = 1 / (C / 100) = 100 / C.")
+
+    calc_col1, calc_col2 = st.columns(2)
+    with calc_col1:
+        a = st.number_input("A", value=0.0, step=0.1, key="calc_a")
+    with calc_col2:
+        b = st.number_input("B", value=0.0, step=0.1, key="calc_b")
+
+    c = (a + b) / 2
+    st.metric("C (średnia A i B)", f"{c:.2f}")
+
+    if c > 0:
+        x = 100 / c
+        st.success(f"X = {x:.4f}")
+    elif c == 0:
+        st.info("Wpisz wartości A i B większe od 0, aby obliczyć X.")
+    else:
+        st.error("C musi być większe od 0.")
+
 
 st.divider()
 st.markdown("<span id='archiwum' class='section-anchor'></span>", unsafe_allow_html=True)
@@ -742,25 +764,5 @@ if st.button("Zapisz typ i analizę"):
         if r.status_code in [200,201]: st.success("Typ zapisany."); st.rerun()
         else: st.error(f"Błąd zapisu: {r.status_code}")
 
-st.markdown("---")
-st.subheader("🧮 Kalkulator X")
-st.caption("Wzory: C = (A + B) / 2 oraz X = 1 / (C / 100) = 100 / C.")
 
-calc_col1, calc_col2, calc_col3 = st.columns(3)
-with calc_col1:
-    a = st.number_input("A", value=0.0, step=0.1, key="calc_a")
-with calc_col2:
-    b = st.number_input("B", value=0.0, step=0.1, key="calc_b")
-
-c = (a + b) / 2
-with calc_col3:
-    st.metric("C (średnia A i B)", f"{c:.2f}")
-
-if c > 0:
-    x = 100 / c
-    st.success(f"X = {x:.4f}")
-elif c == 0:
-    st.info("Wpisz wartości A i B większe od 0, aby obliczyć X.")
-else:
-    st.error("C musi być większe od 0.")
 
