@@ -85,12 +85,24 @@ st.markdown(
     .hero-title span { background: linear-gradient(90deg,#7dd3fc,#a5b4fc); -webkit-background-clip:text; color:transparent; }
     .hero-copy { color:#c6d4e9; max-width:760px; line-height:1.65; margin:0; }
     .live-pill { display:inline-block; margin-top:16px; color:#bbf7d0; background:rgba(34,197,94,.13); border:1px solid rgba(34,197,94,.31); border-radius:999px; padding:6px 11px; font-size:.78rem; font-weight:700; letter-spacing:.5px; }
+    .top-nav { display:flex; gap:8px; overflow-x:auto; padding:8px 2px 12px; scrollbar-width:thin; }
+    .top-nav a { flex:0 0 auto; text-decoration:none; color:#cfe4ff; background:rgba(20,35,58,.82); border:1px solid rgba(96,165,250,.34); border-radius:999px; padding:8px 12px; font-size:.81rem; font-weight:700; transition:.18s; }
+    .top-nav a:hover { color:#fff; border-color:#7dd3fc; background:rgba(30,58,100,.95); transform:translateY(-1px); }
+    .top-nav .nav-primary { color:#ecfdf5; background:linear-gradient(135deg,#047857,#0f766e); border-color:rgba(110,231,183,.62); }
+    .section-anchor { position:relative; top:-82px; visibility:hidden; }
     @media (max-width: 640px) {
       .block-container { padding: 4.05rem .75rem 2rem; }
       .hero-card { padding: 22px 20px; border-radius: 16px; }
       .hero-title { font-size: 2rem; }
+      .top-nav { gap:7px; padding-bottom:10px; }
+      .top-nav a { padding:7px 10px; font-size:.75rem; }
     }
     </style>
+    <nav class='top-nav' aria-label='Nawigacja panelu'>
+      <a href='#home'>⌂ Home</a><a href='#statystyki'>📊 Statystyki</a><a href='#typy'>🎯 Typy</a>
+      <a href='#kalkulatory'>🧮 Kalkulatory</a><a href='#archiwum'>🗂 Archiwum</a><a class='nav-primary' href='#dodaj-typ'>✚ Dodaj typ</a>
+    </nav>
+    <span id='home' class='section-anchor'></span>
     <div class='hero-card'>
         <div class='hero-kicker'>⚖️ INTELIGENTNY PANEL WERDYKTÓW</div>
         <div class='hero-title'>Sędzia <span>AI</span></div>
@@ -430,6 +442,7 @@ if len(df_analizy) > 0:
         unsafe_allow_html=True
     )
 
+st.markdown("<span id='statystyki' class='section-anchor'></span>", unsafe_allow_html=True)
 st.subheader("📊 Statystyki")
 st.caption("Szybki obraz skuteczności i wyniku w wybranym przedziale czasu.")
 zakres_wyboru = st.selectbox("Przedział czasowy", ["Ostatnie 7 dni", "Ostatni miesiąc", "Cały okres"], index=2)
@@ -559,6 +572,7 @@ else:
 
 st.divider()
 
+st.markdown("<span id='typy' class='section-anchor'></span>", unsafe_allow_html=True)
 st.subheader("🎯 Najnowsze typy")
 st.caption("Widoczne: 6 najnowszych typów + wszystkie ze statusem OPEN. Starsze rozliczone trafiają do archiwum.")
 
@@ -621,6 +635,7 @@ if st.button("Policz stawkę"):
     )
 
 st.divider()
+st.markdown("<span id='archiwum' class='section-anchor'></span>", unsafe_allow_html=True)
 st.subheader("Archiwum kuponów")
 
 df_raport_full["MiesiacRok"] = df_raport_full["Data_dt"].apply(
@@ -698,6 +713,7 @@ else:
     st.info("Brak kuponów do edycji.")
 
 st.divider()
+st.markdown("<span id='dodaj-typ' class='section-anchor'></span>", unsafe_allow_html=True)
 st.subheader("Dodaj typ")
 st.caption("Wybierz kategorię rynku pasującą do sportu. Archiwum zapisuje kategorię i selekcję osobno.")
 rynki = {"Pilka":["Zwycięzca meczu","Gole — suma meczu","BTTS","Handicap","Podwójna szansa","Inne"], "Tenis":["Zwycięzca meczu","Sety — suma meczu","Gemy — suma meczu","Handicap","Inne"], "Koszykowka":["Zwycięzca meczu","Punkty — suma meczu","Handicap","Inne"], "Hokej":["Zwycięzca meczu","Gole — suma meczu (hokej)","Handicap","Inne"]}
