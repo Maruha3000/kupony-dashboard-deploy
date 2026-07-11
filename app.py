@@ -85,6 +85,7 @@ st.markdown(
     .hero-title { color:#f8fbff; font-size:2.45rem; font-weight:800; margin:7px 0 7px; }
     .hero-title span { background: linear-gradient(90deg,#7dd3fc,#a5b4fc); -webkit-background-clip:text; color:transparent; }
     .hero-copy { color:#c6d4e9; max-width:760px; line-height:1.65; margin:0; }
+    .version-pill { display:inline-block; margin-left:8px; color:#dbeafe; background:rgba(59,130,246,.18); border:1px solid rgba(96,165,250,.42); border-radius:999px; padding:6px 10px; font-size:.74rem; font-weight:800; letter-spacing:.7px; vertical-align:middle; }
     .live-pill { display:inline-block; margin-top:16px; color:#bbf7d0; background:rgba(34,197,94,.13); border:1px solid rgba(34,197,94,.31); border-radius:999px; padding:6px 11px; font-size:.78rem; font-weight:700; letter-spacing:.5px; }
     .top-nav { position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:99999; width:min(1220px, calc(100% - 24px)); display:flex; gap:8px; overflow-x:auto; padding:8px 10px 10px; scrollbar-width:thin; background:rgba(8,16,30,.91); border:1px solid rgba(96,165,250,.24); border-radius:14px; box-shadow:0 10px 28px rgba(0,0,0,.28); }
     .top-nav a { flex:0 0 auto; text-decoration:none; color:#cfe4ff; background:rgba(20,35,58,.82); border:1px solid rgba(96,165,250,.34); border-radius:999px; padding:8px 12px; font-size:.81rem; font-weight:700; transition:.18s; }
@@ -106,9 +107,9 @@ st.markdown(
     <span id='home' class='section-anchor'></span>
     <div class='hero-card'>
         <div class='hero-kicker'>⚖️ INTELIGENTNY PANEL WERDYKTÓW</div>
-        <div class='hero-title'>Sędzia <span>AI</span></div>
-        <p class='hero-copy'><b>Nie szukamy typów. Eliminujemy złe decyzje.</b><br>
-        Analiza, dyscyplina banku i transparentne rozliczenia — w jednym miejscu.</p>
+        <div class='hero-title'>Sędzia <span>AI</span><span class='version-pill'>v26</span></div>
+        <p class='hero-copy'><b>Sędzia szuka typów i eliminuje złe decyzje.</b><br>
+        Samodzielna analiza, dyscyplina banku i transparentne rozliczenia — w jednym miejscu.</p>
         <div class='live-pill'>● SYSTEM AKTYWNY</div>
     </div>
     """,
@@ -117,9 +118,9 @@ st.markdown(
 
 with st.expander("🧠 KLIKNIJ I ZOBACZ, JAK SĘDZIA PODEJMUJE DECYZJE  •  Research. Nauka na wynikach. Ewolucja zasad."):
     st.markdown(
-        "**Sędzia AI nie szuka przypadkowych typów.** Przed każdym werdyktem prowadzi wielowarstwowy research: analizuje statystyki, formę, kontekst meczu, kursy i value, newsy, składy, absencje oraz sygnały z mediów społecznościowych, lokalnych źródeł, X, Reddita i forów kibicowskich.\n\n"
-        "Każdy rozliczony kupon trafia do jego pamięci operacyjnej. Sędzia porównuje decyzję z przebiegiem meczu, rozpoznaje błędy analizy i błędy wykonawcze, a następnie aktualizuje profile lig, filtry oraz zasady działania. Nowe reguły najpierw przechodzą test, a później są zostawiane, korygowane albo usuwane.\n\n"
-        "**Nie chodzi o więcej typów. Chodzi o system, który z każdą decyzją staje się trudniejszy do oszukania przez przypadek.**"
+        "**Sędzia AI samodzielnie szuka wartościowych typów.** Przed każdym werdyktem prowadzi wielowarstwowy research: analizuje statystyki, formę, kontekst meczu, kursy i value, newsy, składy, absencje oraz sygnały z mediów społecznościowych, lokalnych źródeł, X, Reddita i forów kibicowskich.\n\n"
+        "Każdy rozliczony kupon trafia do jego pamięci operacyjnej. Sędzia porównuje własny werdykt z przebiegiem meczu, rozpoznaje błędy analizy i błędy wykonawcze, a następnie aktualizuje profile lig, filtry oraz zasady działania. Nowe reguły najpierw przechodzą test, a później są zostawiane, korygowane albo usuwane.\n\n"
+        "**Sędzia nie szuka większej liczby typów — szuka lepszych decyzji. Z każdym rozliczeniem jego system staje się trudniejszy do oszukania przez przypadek.**"
     )
 
 
@@ -176,6 +177,23 @@ def dodaj_pola_rynku(df):
 
 def normalizuj_rynek(wartosc): return str(wartosc)
 def normalizuj_kolumne_rynku(df, kolumna): return df.copy()
+
+# --- Jednorazowa migracja kwot: skala x100 ---
+SKALA_KWOT = 100
+
+def przeskaluj_stawki_x100(df, kolumna="Stawka"):
+    """Skaluje stare stawki (0.50/1.00) do 50/100; nowe stawki nie są mnożone ponownie."""
+    if kolumna not in df.columns or df.empty:
+        return df.copy(), False
+    wynik = df.copy()
+    liczby = pd.to_numeric(wynik[kolumna].astype(str).str.replace(",", ".", regex=False), errors="coerce")
+    # Stare zapisy miały stawki najwyżej kilka GBP; nowe są od 50 GBP wzwyż.
+    do_zmiany = liczby.notna() & (liczby > 0) & (liczby < 10)
+    if not do_zmiany.any():
+        return wynik, False
+    liczby.loc[do_zmiany] = liczby.loc[do_zmiany] * SKALA_KWOT
+    wynik[kolumna] = liczby.where(liczby.notna(), wynik[kolumna])
+    return wynik, True
 
 # --- Wyniki piłki nożnej: football-data.org ---
 def _nazwa_do_porownania(nazwa):
@@ -318,10 +336,12 @@ lipiec_data = """Data,Sport,Rozgrywki,Mecz,Rynek,Pewnosc,Stawka,Kurs,Godzina,Sta
 df_czerwiec = pd.read_csv(StringIO(czerwiec_data))
 df_czerwiec["Analiza"] = ""
 df_czerwiec = normalizuj_kolumne_rynku(df_czerwiec, "Rynek")
+df_czerwiec, _ = przeskaluj_stawki_x100(df_czerwiec)
 
 df_lipiec = pd.read_csv(StringIO(lipiec_data))
 df_lipiec["Analiza"] = ""
 df_lipiec = normalizuj_kolumne_rynku(df_lipiec, "Rynek")
+df_lipiec, _ = przeskaluj_stawki_x100(df_lipiec)
 
 content, sha_a = github_get("analizy.csv")
 if content:
@@ -342,6 +362,18 @@ else:
 # rankingu rynków, statystyk i wykresów.
 df_analizy = normalizuj_kolumne_rynku(df_analizy, "rynek")
 df_archiwum = normalizuj_kolumne_rynku(df_archiwum, "Rynek")
+df_analizy, analizy_przeskalowane = przeskaluj_stawki_x100(df_analizy, "stawka")
+df_archiwum, archiwum_przeskalowane = przeskaluj_stawki_x100(df_archiwum, "Stawka")
+
+# Zapis następuje tylko raz, gdy wykryto starą skalę 0.50/1.00.
+if analizy_przeskalowane:
+    bufor = StringIO(); df_analizy.to_csv(bufor, index=False)
+    github_put("analizy.csv", bufor.getvalue(), sha_a, "Migracja stawek x100")
+if archiwum_przeskalowane:
+    bufor = StringIO(); df_archiwum.to_csv(bufor, index=False)
+    github_put("archiwum.csv", bufor.getvalue(), sha_arch, "Migracja stawek x100")
+if analizy_przeskalowane or archiwum_przeskalowane:
+    st.info("Kwoty historyczne zostały jednorazowo przeskalowane x100 i zapisane w repozytorium danych.")
 
 if len(df_analizy) > 0:
     df_analizy["data_dt"] = pd.to_datetime(df_analizy["data"], format="%Y-%m-%d", errors="coerce")
@@ -721,10 +753,10 @@ with col_bank_calc:
     st.subheader("💰 Kalkulator bezpiecznej stawki")
     st.write("Wpisz swój aktualny bank, a system podliczy bezpieczną stawkę na podstawie zasad ochrony kapitału.")
 
-    bank_bazowy = 28.0
-    stawki_bazowe = {"Pewny": 1.50, "Sredni": 1.00, "Ryzykowny": 0.50}
+    bank_bazowy = 2800.0
+    stawki_bazowe = {"Pewny": 150.0, "Sredni": 100.0, "Ryzykowny": 50.0}
 
-    bank_uzytkownika = st.number_input("Twój aktualny bank (GBP)", min_value=1.0, value=28.0, step=1.0, key="bank_użytkownika_input")
+    bank_uzytkownika = st.number_input("Twój aktualny bank (GBP)", min_value=1.0, value=2800.0, step=50.0, key="bank_użytkownika_input")
     pewnosc_bank_input = st.selectbox("Poziom pewności zakładu", ["Pewny", "Sredni", "Ryzykowny"], key="pewnosc_bank_select")
 
     if st.button("Policz stawkę", key="policz_stawke_btn"):
@@ -861,7 +893,7 @@ elif kategoria=="Handicap":
 elif kategoria=="Zwycięzca meczu": selekcja=st.selectbox("Typ / selekcja",uczestnicy if len(uczestnicy)==2 else ["Gospodarze","Goście"])
 elif kategoria=="Podwójna szansa": selekcja=st.selectbox("Typ / selekcja",["1X","X2","12"])
 else: selekcja=st.text_input("Typ / selekcja")
-a,b=st.columns(2); pewnosc=a.selectbox("Poziom pewności",["Pewny","Średni","Ryzykowny"]); stawka=b.number_input("Stawka GBP",min_value=0.0,step=.5)
+a,b=st.columns(2); pewnosc=a.selectbox("Poziom pewności",["Pewny","Średni","Ryzykowny"]); stawka=b.number_input("Stawka GBP",min_value=0.0,step=50.0)
 kurs=st.number_input("Kurs WH",min_value=1.0,step=.01); analiza=st.text_area("Twoja analiza (opis po ludzku)"); pin=st.text_input("Kod PIN",type="password",max_chars=4,key="pin_dodaj")
 if st.button("Zapisz typ i analizę"):
     if pin != st.secrets["APP_PIN"]: st.error("Nieprawidłowy kod PIN.")
