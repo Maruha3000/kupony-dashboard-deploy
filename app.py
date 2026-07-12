@@ -107,7 +107,7 @@ st.markdown(
     <span id='home' class='section-anchor'></span>
     <div class='hero-card'>
         <div class='hero-kicker'>⚖️ INTELIGENTNY PANEL WERDYKTÓW</div>
-        <div class='hero-title'>Sędzia <span>AI</span><span class='version-pill'>v26</span></div>
+        <div class='hero-title'>Sędzia <span>AI</span><span class='version-pill'>v27</span></div>
         <p class='hero-copy'><b>Sędzia szuka typów i eliminuje złe decyzje.</b><br>
         Samodzielna analiza, dyscyplina banku i transparentne rozliczenia — w jednym miejscu.</p>
         <div class='live-pill'>● SYSTEM AKTYWNY</div>
@@ -748,100 +748,61 @@ panel_wynikow_live()
 
 st.divider()
 st.markdown("<span id='kalkulatory' class='section-anchor'></span>", unsafe_allow_html=True)
-col_bank_calc, col_x_calc = st.columns(2)
-with col_bank_calc:
-    st.subheader("💰 Kalkulator bezpiecznej stawki")
-    st.write("Wpisz swój aktualny bank, a system podliczy bezpieczną stawkę na podstawie zasad ochrony kapitału.")
+st.subheader("Kalkulatory")
+st.caption("Narzędzia pomocnicze do kontroli stawki i obliczeń. Kalkulator Kelly pokazuje wynik matematyczny; stosuj ostrożny ułamek stawki.")
 
+col_bank_calc, col_x_calc, col_kelly_calc = st.columns(3)
+
+with col_bank_calc:
+    st.markdown("### 💰 Bezpieczna stawka")
+    st.write("Podaj aktualny bank, aby przeliczyć stawkę proporcjonalnie do ustalonej skali.")
     bank_bazowy = 2800.0
     stawki_bazowe = {"Pewny": 150.0, "Sredni": 100.0, "Ryzykowny": 50.0}
-
-    bank_uzytkownika = st.number_input("Twój aktualny bank (GBP)", min_value=1.0, value=2800.0, step=50.0, key="bank_użytkownika_input")
+    bank_uzytkownika = st.number_input("Twój aktualny bank (GBP)", min_value=1.0, value=2800.0, step=50.0, key="bank_uzytkownika_input")
     pewnosc_bank_input = st.selectbox("Poziom pewności zakładu", ["Pewny", "Sredni", "Ryzykowny"], key="pewnosc_bank_select")
 
-    if st.button("Policz stawkę", key="policz_stawke_btn"):
-        wspolczynnik = bank_uzytkownika / bank_bazowy
-        stawka_rekomendowana = round(stawki_bazowe[pewnosc_bank_input] * wspolczynnik, 2)
-        procent_banku = round((stawka_rekomendowana / bank_uzytkownika) * 100, 1)
-
-        st.success(
-            f"Przy banku {bank_uzytkownika:.2f} GBP i pewności '{pewnosc_bank_input}', "
-            f"bezpieczna stawka to około **{stawka_rekomendowana} GBP** "
-            f"(to około {procent_banku}% Twojego banku)."
-        )
-        st.caption(
-            "To przeliczenie bazuje na zasadzie, że przy banku 28 GBP stawki wynoszą: "
-            "Pewny 1.50 GBP, Sredni 1.00 GBP, Ryzykowny 0.50 GBP — czyli od 1.8% do 5.4% banku, "
-            "zależnie od poziomu pewności."
-        )
+    wspolczynnik = bank_uzytkownika / bank_bazowy
+    stawka_rekomendowana = round(stawki_bazowe[pewnosc_bank_input] * wspolczynnik, 2)
+    procent_banku = (stawka_rekomendowana / bank_uzytkownika) * 100
+    st.metric("Rekomendowana stawka", f"{stawka_rekomendowana:.2f} GBP")
+    st.caption(f"To {procent_banku:.1f}% banku przy poziomie: {pewnosc_bank_input}.")
 
 with col_x_calc:
-    st.subheader("🧮 Kalkulator X")
-    st.caption("Wzory: C = (A + B) / 2 oraz X = 1 / (C / 100) = 100 / C.")
-
+    st.markdown("### 🧮 Kalkulator X")
+    st.caption("Wzory: C = (A + B) / 2 oraz X = 100 / C.")
     calc_col1, calc_col2 = st.columns(2)
     with calc_col1:
         a = st.number_input("A", value=0.0, step=0.1, key="calc_a")
     with calc_col2:
         b = st.number_input("B", value=0.0, step=0.1, key="calc_b")
-
     c = (a + b) / 2
     st.metric("C (średnia A i B)", f"{c:.2f}")
-
     if c > 0:
-        x = 100 / c
-        st.success(f"X = {x:.4f}")
+        st.success(f"X = {100 / c:.4f}")
     elif c == 0:
         st.info("Wpisz wartości A i B większe od 0, aby obliczyć X.")
     else:
         st.error("C musi być większe od 0.")
 
+with col_kelly_calc:
+    st.markdown("### 📐 Kalkulator Kelly")
+    st.caption("Wzór: f = (p × kurs - 1) / (kurs - 1). Ujemny wynik oznacza brak dodatniej przewagi.")
+    kelly_bank = st.number_input("Bank do Kelly (GBP)", min_value=1.0, value=2800.0, step=50.0, key="kelly_bank_input")
+    kelly_kurs = st.number_input("Kurs dziesiętny", min_value=1.01, value=2.00, step=0.01, format="%.2f", key="kelly_odds_input")
+    kelly_prawdopodobienstwo = st.number_input("Szacowane prawdopodobieństwo (%)", min_value=0.0, max_value=100.0, value=55.0, step=1.0, key="kelly_probability_input")
+    kelly_ulamek = st.selectbox("Ułamek stawki Kelly", ["1/4 Kelly", "1/2 Kelly", "Pełny Kelly"], index=0, key="kelly_fraction_select")
+    mnoznik_kelly = {"1/4 Kelly": 0.25, "1/2 Kelly": 0.50, "Pełny Kelly": 1.0}[kelly_ulamek]
+    p = kelly_prawdopodobienstwo / 100
+    pelny_kelly = (p * kelly_kurs - 1) / (kelly_kurs - 1)
+    procent_kelly = max(0.0, pelny_kelly) * mnoznik_kelly * 100
+    stawka_kelly = kelly_bank * procent_kelly / 100
+    if pelny_kelly > 0:
+        st.metric("Stawka Kelly", f"{stawka_kelly:.2f} GBP", f"{procent_kelly:.2f}% banku")
+        st.caption(f"Pełny Kelly: {pelny_kelly * 100:.2f}% banku; wybrano: {kelly_ulamek}.")
+    else:
+        st.metric("Stawka Kelly", "0.00 GBP", "Brak dodatniej przewagi")
+        st.warning("Przy tych danych wzór Kelly nie rekomenduje stawki.")
 
-st.subheader("📊 Kalkulator Kelly Criterion")
-st.caption("Model C — Matematycznie optymalna stawka według wzoru Kelly Criterion")
-with st.expander("📚 Wzór Kelly Criterion (kliknij aby rozwinąć)"):
-    st.markdown("""
-        **Wzór Kelly Criterion (Model C — najdokładniejszy):**
-            > **f = (b × p − q) / b**
-
-                Gdzie:
-                    - **b** = kurs − 1
-                        - **p** = Twoje prawdopodobieństwo (jako ułamek, np. 0.65 dla 65%)
-                            - **q** = 1 − p
-
-                                **Przykład:** Kurs 1.80, p = 65%  →  b = 0.80, f = (0.80×0.65 − 0.35) / 0.80 = **0.15 (15% banku)**
-
-                                    W praktyce używa się **0.25–0.50 Kelly** (zmniejszony), np. 0.25 Kelly = 3.75% banku.
-                                        """)
-                                    kelly_col1, kelly_col2 = st.columns(2)
-                                        with kelly_col1:
-                                            kurs_kelly = st.number_input("🏗️ Kurs (odds)", min_value=1.01, value=1.80, step=0.05, key="kelly_kurs")
-                                                prob_kelly = st.number_input("🎯 Twoje prawdopodobieństwo (%)", min_value=1.0, max_value=99.0, value=65.0, step=1.0, key="kelly_prob")
-                                                    bank_kelly = st.number_input("💰 Twój bank (GBP)", min_value=1.0, value=2800.0, step=50.0, key="kelly_bank")
-                                                    with kelly_col2:
-                                                        if st.button("🧠 Oblicz Kelly", key="kelly_btn"):
-                                                                b_k = kurs_kelly - 1
-                                                                        p_k = prob_kelly / 100
-                                                                                q_k = 1 - p_k
-                                                                                        if b_k <= 0:
-                                                                                                    st.error("❌ Kurs musi być większy od 1.")
-                                                                                                            else:
-                                                                                                                        f_kelly = (b_k * p_k - q_k) / b_k
-                                                                                                                                    if f_kelly <= 0:
-                                                                                                                                                    st.error(f"❌ Kelly = {f_kelly*100:.2f}% — brak value! Nie warto stawiać.")
-                                                                                                                                                                else:
-                                                                                                                                                                                f_50 = f_kelly * 0.50
-                                                                                                                                                                                                f_25 = f_kelly * 0.25
-                                                                                                                                                                                                                stawka_full = round(f_kelly * bank_kelly, 2)
-                                                                                                                                                                                                                                stawka_50 = round(f_50 * bank_kelly, 2)
-                                                                                                                                                                                                                                                stawka_25 = round(f_25 * bank_kelly, 2)
-                                                                                                                                                                                                                                                                st.success(f"✅ Pełny Kelly: {f_kelly*100:.1f}% banku = £{stawka_full}")
-                                                                                                                                                                                                                                                                                st.info(f"🟡 0.50 Kelly (zalecane): {f_50*100:.1f}% = £{stawka_50}")
-                                                                                                                                                                                                                                                                                                st.info(f"🟢 0.25 Kelly (ostrożny): {f_25*100:.1f}% = £{stawka_25}")
-                                                                                                                                                                                                                                                                                                                st.caption(f"b={b_k:.2f} | p={p_k:.2f} | q={q_k:.2f} | f = ({b_k:.2f}*{p_k:.2f} - {q_k:.2f}) / {b_k:.2f} = {f_kelly:.4f}")
-                                                                                                                                                                                                                                                                                                                    else:
-                                                                                                                                                                                                                                                                                                                            st.info("👈 Wpisz kurs, prawdopodobieństwo i bank, a następnie kliknij 'Oblicz Kelly'.")
-                                                                                                                                                                                                                                                                                                                            st.caption("• Pełny Kelly często daje zbyt wysoką stawkę — w praktyce używa się 0.25–0.50 Kelly • Kelly < 0 = brak value")
 st.divider()
 st.markdown("<span id='archiwum' class='section-anchor'></span>", unsafe_allow_html=True)
 st.subheader("Archiwum kuponów")
