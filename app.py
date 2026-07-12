@@ -813,7 +813,7 @@ with st.expander("📚 Wzór Kelly Criterion (kliknij aby rozwinąć)"):
 
                                     W praktyce używa się **0.25–0.50 Kelly** (zmniejszony), np. 0.25 Kelly = 3.75% banku.
                                         """)
-                                        kelly_col1, kelly_col2 = st.columns(2)
+                                    kelly_col1, kelly_col2 = st.columns(2)
                                         with kelly_col1:
                                             kurs_kelly = st.number_input("🏗️ Kurs (odds)", min_value=1.01, value=1.80, step=0.05, key="kelly_kurs")
                                                 prob_kelly = st.number_input("🎯 Twoje prawdopodobieństwo (%)", min_value=1.0, max_value=99.0, value=65.0, step=1.0, key="kelly_prob")
